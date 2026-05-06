@@ -2,7 +2,7 @@ import streamlit as st
 
 st.markdown("🍓Questify🍓")
 
-st.title("Profil anlegen")
+st.title("🔆Profil anlegen🔆")
 
 with st.form("kontakt"):
     col1, col2 = st.columns(2)
