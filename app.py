@@ -14,4 +14,7 @@ st.markdown("HELLOOOO")
 st.markdown("Hello friends!")
 st.markdown("i hab keine geschwungene Klammer")
 st.markdown("ERROR")
+
+
+st.input("Motivationssprüche")
 >>>>>>> 7524ad7c5096bd9db37563be2667624af2938ac5
