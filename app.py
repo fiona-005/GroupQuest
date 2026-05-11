@@ -58,7 +58,7 @@ with st.form("quest_form"):
 if submitted:
     errors = []
     if not quest_name.strip():
-        errors.append("Bitte einen Namen eingeben.")
+        errors.append("Bitte einen Namen der Quest eingeben.")
     if end_datum < start_datum:
         errors.append("Das Enddatum muss nach dem Startdatum liegen.")
     if not beschreibung.strip():
@@ -71,21 +71,12 @@ if submitted:
         st.success(f"Quest '{quest_name}' wurde gestartet!")
 
 
-        
-
-
-    if submitted:
-        if not zustimmung:
-            st.error("Bitte AGB akzeptieren!")
-        elif not email:
-            st.error("E-Mail fehlt!")
-        else:
-            st.success(f"Danke, {vorname}! Deine Nachricht wurde gesendet.")
 
 
 # Widgets shared by all the pages
 if st.sidebar.button("Account erstellen"):
-    page1()
+    page1() 
+    
 if st.sidebar.button("Quest erstellen"):
     page2(
     )
