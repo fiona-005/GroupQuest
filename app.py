@@ -1,11 +1,99 @@
 import streamlit as st
 from datetime import date, timedelta
 import base64
-from io import BytesIO
 
 st.set_page_config(page_title="Questify", page_icon="🍓", layout="centered")
 
+# ── XP-Konfiguration ─────────────────────────────────────────────────────────
+
+XP_PER_DAY = {
+    "Einfach":     5,
+    "Mittel":      15,
+    "Schwer":      25,
+    "Sehr Schwer": 40,
+}
+
+XP_COMPLETION_BONUS = {
+    "Einfach":     20,
+    "Mittel":      50,
+    "Schwer":      100,
+    "Sehr Schwer": 200,
+}
+
+LEVEL_TITLES = {
+    1:  "Neuling",
+    2:  "Entdecker",
+    3:  "Einsteiger",
+    4:  "Aufsteiger",
+    5:  "Kämpfer",
+    6:  "Strebsamer",
+    7:  "Abenteurer",
+    8:  "Veteran",
+    9:  "Champion",
+    10: "Meister",
+    11: "Großmeister",
+    12: "Legende",
+}
+
+LOCATION_ICONS = {
+    "für zu Hause":      "🏠",
+    "im Freien":         "🌳",
+    "im Fitnessstudio":  "🏋️",
+    "Schule/Uni/Arbeit": "📚",
+    "sonstiges":         "📍",
+}
+
+BADGE_STYLES = {
+    "Einfach":     "background:#EAF3DE;color:#3B6D11",
+    "Mittel":      "background:#FAEEDA;color:#854F0B",
+    "Schwer":      "background:#FCEBEB;color:#A32D2D",
+    "Sehr Schwer": "background:#EEEDFE;color:#3C3489",
+}
+
+# ── Level-Hilfsfunktionen ────────────────────────────────────────────────────
+
+def xp_for_level(level: int) -> int:
+    return int(100 * (level ** 1.6))
+
+def total_xp_for_level(level: int) -> int:
+    return sum(xp_for_level(lvl) for lvl in range(2, level + 1))
+
+def get_level_info(total_xp: int) -> dict:
+    level = 1
+    while level < 99:
+        if total_xp >= total_xp_for_level(level + 1):
+            level += 1
+        else:
+            break
+    xp_start    = total_xp_for_level(level)
+    xp_end      = total_xp_for_level(level + 1)
+    xp_in_level = total_xp - xp_start
+    xp_needed   = xp_end - xp_start
+    progress    = xp_in_level / xp_needed if xp_needed > 0 else 1.0
+    return {
+        "level":       level,
+        "title":       LEVEL_TITLES.get(level, f"Level {level}"),
+        "xp_in_level": xp_in_level,
+        "xp_needed":   xp_needed,
+        "xp_to_next":  xp_needed - xp_in_level,
+        "progress":    progress,
+    }
+
+def award_xp(amount: int, reason: str = ""):
+    old_info = get_level_info(st.session_state.xp)
+    st.session_state.xp += amount
+    new_info = get_level_info(st.session_state.xp)
+    if new_info["level"] > old_info["level"]:
+        st.balloons()
+        st.success(
+            f"🎉 Level Up! Du bist jetzt **Level {new_info['level']} – {new_info['title']}**!"
+        )
+    else:
+        label = f" ({reason})" if reason else ""
+        st.success(f"+{amount} XP{label}")
+
 # ── Session State initialisieren ─────────────────────────────────────────────
+
 if "posts" not in st.session_state:
     st.session_state.posts = [
         {
@@ -63,7 +151,11 @@ if "page" not in st.session_state:
 if "comment_inputs" not in st.session_state:
     st.session_state.comment_inputs = {}
 
+if "xp" not in st.session_state:
+    st.session_state.xp = 0
+
 # ── Hilfsfunktionen ──────────────────────────────────────────────────────────
+
 def img_to_base64(uploaded_file):
     if uploaded_file is None:
         return None
@@ -71,7 +163,6 @@ def img_to_base64(uploaded_file):
     b64 = base64.b64encode(bytes_data).decode()
     mime = uploaded_file.type
     return f"data:{mime};base64,{b64}"
-
 
 def like_post(post_id):
     for p in st.session_state.posts:
@@ -84,15 +175,14 @@ def like_post(post_id):
                 p["liked"] = True
             break
 
-
 def add_comment(post_id, text):
     for p in st.session_state.posts:
         if p["id"] == post_id:
             p["comments"].append({"author": "Du", "text": text})
             break
 
-
 # ── Seiten ───────────────────────────────────────────────────────────────────
+
 def page_account():
     st.markdown("## 🔆 Profil anlegen")
     with st.form("Kontakt"):
@@ -176,7 +266,6 @@ def page_quest_erstellen():
 
 
 def page_feed():
-    # Aktive Quest anzeigen
     quest = st.session_state.active_quest
     if quest:
         days_done = (date.today() - quest["start"]).days + 1
@@ -238,17 +327,22 @@ def page_feed():
                 "comments": [],
             }
             st.session_state.posts.insert(0, new_post)
-            st.success("Dein Fortschritt wurde geteilt! 🎉")
+
+            # XP vergeben
+            schwierigkeit = (
+                st.session_state.active_quest.get("schwierigkeit", "Einfach")
+                if st.session_state.active_quest
+                else "Einfach"
+            )
+            award_xp(XP_PER_DAY.get(schwierigkeit, 5), reason="Fortschritt geteilt")
             st.rerun()
 
     st.divider()
     st.markdown("### 🗂️ Feed")
 
-    # ── Posts anzeigen ───────────────────────────────────────────────────────
     for post in st.session_state.posts:
         pid = post["id"]
         with st.container(border=True):
-            # Header
             col_av, col_info, col_day = st.columns([0.08, 0.72, 0.2])
             with col_av:
                 st.markdown(
@@ -269,14 +363,11 @@ def page_feed():
                     unsafe_allow_html=True,
                 )
 
-            # Bild
             if post["img"]:
                 st.image(post["img"], use_container_width=True)
 
-            # Text
             st.markdown(post["text"])
 
-            # Like & Kommentar Buttons
             col_like, col_comment, _ = st.columns([0.2, 0.25, 0.55])
             with col_like:
                 heart = "❤️" if post["liked"] else "🤍"
@@ -288,12 +379,10 @@ def page_feed():
                 show_key = f"show_comments_{pid}"
                 if show_key not in st.session_state:
                     st.session_state[show_key] = False
-                label = f"💬 {n_comments}"
-                if st.button(label, key=f"toggle_comments_{pid}"):
+                if st.button(f"💬 {n_comments}", key=f"toggle_comments_{pid}"):
                     st.session_state[show_key] = not st.session_state[show_key]
                     st.rerun()
 
-            # Kommentare
             if st.session_state.get(f"show_comments_{pid}", False):
                 if post["comments"]:
                     for c in post["comments"]:
@@ -307,14 +396,125 @@ def page_feed():
                     st.caption("Noch keine Kommentare.")
 
                 with st.form(f"comment_form_{pid}", clear_on_submit=True):
-                    new_comment = st.text_input("Kommentar schreiben...", key=f"cinput_{pid}", label_visibility="collapsed")
+                    new_comment = st.text_input(
+                        "Kommentar schreiben...", key=f"cinput_{pid}", label_visibility="collapsed"
+                    )
                     c_submitted = st.form_submit_button("Senden")
                     if c_submitted and new_comment.strip():
                         add_comment(pid, new_comment.strip())
                         st.rerun()
 
 
+def page_level():
+    st.markdown("## 🏆 Mein Level")
+
+    info = get_level_info(st.session_state.xp)
+    pct  = int(info["progress"] * 100)
+
+    # Haupt-XP-Block
+    st.markdown(
+        f"""
+        <div style="background:#fff;border:0.5px solid #e0e0e0;border-radius:12px;
+                    padding:1.2rem;margin-bottom:1rem">
+          <div style="display:flex;align-items:center;gap:14px;margin-bottom:1rem">
+            <div style="width:56px;height:56px;border-radius:50%;background:#FBEAF0;
+                        color:#E23D5B;display:flex;align-items:center;justify-content:center;
+                        font-size:24px;font-weight:500;flex-shrink:0">{info['level']}</div>
+            <div>
+              <div style="font-size:17px;font-weight:500">
+                Level {info['level']} – {info['title']}
+              </div>
+              <div style="font-size:13px;color:gray">{st.session_state.xp} XP gesamt</div>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;
+                      color:gray;margin-bottom:5px">
+            <span>{info['xp_in_level']} / {info['xp_needed']} XP in diesem Level</span>
+            <span>{info['xp_to_next']} XP bis Level {info['level'] + 1}</span>
+          </div>
+          <div style="height:14px;background:#f0f0f0;border-radius:7px;overflow:hidden">
+            <div style="height:100%;width:{pct}%;background:#E23D5B;border-radius:7px"></div>
+          </div>
+          <div style="font-size:11px;color:gray;margin-top:4px;text-align:right">{pct}%</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # Statistiken
+    col1, col2, col3 = st.columns(3)
+    quests = st.session_state.get("quests", [])
+    active = 1 if st.session_state.get("active_quest") else 0
+    col1.metric("Gesamt-XP",  st.session_state.xp)
+    col2.metric("Quests",     len(quests))
+    col3.metric("Aktiv",      active)
+
+    # Aktive Quests
+    st.markdown("### 📋 Aktive Quests")
+    if not quests:
+        st.info("Noch keine Quests erstellt.")
+    else:
+        for q in quests:
+            schwierigkeit = q.get("schwierigkeit") or "Einfach"
+            ort           = q.get("ort") or "sonstiges"
+            icon          = LOCATION_ICONS.get(ort, "📍")
+            xp_day        = XP_PER_DAY.get(schwierigkeit, 5)
+            days_total    = max(q.get("days_total", 1), 1)
+            days_done     = (date.today() - q["start"]).days + 1
+            days_done     = max(0, min(days_done, days_total))
+            progress_q    = int(days_done / days_total * 100)
+            xp_earned     = days_done * xp_day
+            badge_style   = BADGE_STYLES.get(schwierigkeit, "background:#f0f0f0;color:#555")
+
+            st.markdown(
+                f"""
+                <div style="background:#fff;border:0.5px solid #e0e0e0;border-radius:10px;
+                            padding:12px 14px;margin-bottom:10px">
+                  <div style="display:flex;justify-content:space-between;align-items:center;
+                              margin-bottom:6px">
+                    <span style="font-size:14px;font-weight:500">{icon} {q['name']}</span>
+                    <span style="font-size:11px;padding:2px 8px;border-radius:99px;
+                                 {badge_style}">{schwierigkeit}</span>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:10px;">
+                    <div style="flex:1;height:6px;background:#f0f0f0;border-radius:3px;overflow:hidden">
+                      <div style="height:100%;width:{progress_q}%;background:#E23D5B;
+                                  border-radius:3px"></div>
+                    </div>
+                    <span style="font-size:12px;color:gray;white-space:nowrap">
+                      {days_done} / {days_total} · {ort}
+                    </span>
+                  </div>
+                  <div style="font-size:11px;color:gray;margin-top:5px">
+                    +{xp_day} XP/Tag · {xp_earned} XP bisher ·
+                    Abschluss-Bonus: +{XP_COMPLETION_BONUS.get(schwierigkeit, 20)} XP
+                  </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+    # XP-Legende
+    with st.expander("ℹ️ Wie werden XP berechnet?"):
+        st.markdown(
+            """
+            | Schwierigkeit | XP pro Tag | Abschluss-Bonus |
+            |---|---|---|
+            | Einfach | +5 | +20 |
+            | Mittel | +15 | +50 |
+            | Schwer | +25 | +100 |
+            | Sehr Schwer | +40 | +200 |
+
+            **Level-Formel:** `XP für Level N = int(100 × N^1.6)`  
+            → Level 2: 100 XP · Level 5: 760 XP · Level 10: 2 512 XP · Level 20: 8 103 XP
+
+            XP werden automatisch vergeben, wenn du im Feed einen Fortschritt postest.
+            """
+        )
+
+
 # ── Sidebar Navigation ───────────────────────────────────────────────────────
+
 st.sidebar.title("🍓 Questify")
 st.sidebar.divider()
 
@@ -324,19 +524,53 @@ if st.sidebar.button("🏠 Feed", use_container_width=True):
 if st.sidebar.button("⚔️ Quest erstellen", use_container_width=True):
     st.session_state.page = "quest"
 
+if st.sidebar.button("🏆 Mein Level", use_container_width=True):
+    st.session_state.page = "level"
+
 if st.sidebar.button("👤 Account erstellen", use_container_width=True):
     st.session_state.page = "account"
+
+# Kompaktes Level-Widget in der Sidebar
+if st.session_state.xp > 0 or True:  # immer anzeigen
+    info = get_level_info(st.session_state.xp)
+    pct  = int(info["progress"] * 100)
+    st.sidebar.divider()
+    st.sidebar.markdown(
+        f"""
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+          <div style="width:32px;height:32px;border-radius:50%;background:#FBEAF0;
+                      color:#E23D5B;display:flex;align-items:center;justify-content:center;
+                      font-size:13px;font-weight:500;flex-shrink:0">{info['level']}</div>
+          <div>
+            <div style="font-size:13px;font-weight:500">
+              Lv. {info['level']} – {info['title']}
+            </div>
+            <div style="font-size:11px;color:gray">{st.session_state.xp} XP gesamt</div>
+          </div>
+        </div>
+        <div style="height:6px;background:#f0f0f0;border-radius:3px;overflow:hidden">
+          <div style="height:100%;width:{pct}%;background:#E23D5B;border-radius:3px"></div>
+        </div>
+        <div style="font-size:10px;color:gray;margin-top:3px;text-align:right">
+          {info['xp_to_next']} XP bis Level {info['level'] + 1}
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 if st.session_state.active_quest:
     st.sidebar.divider()
     st.sidebar.markdown(f"**Aktive Quest:**  \n{st.session_state.active_quest['name']}")
 
 # ── Router ───────────────────────────────────────────────────────────────────
+
 st.title("🍓 Questify")
 
 if st.session_state.page == "feed":
     page_feed()
 elif st.session_state.page == "quest":
     page_quest_erstellen()
+elif st.session_state.page == "level":
+    page_level()
 elif st.session_state.page == "account":
     page_account()
