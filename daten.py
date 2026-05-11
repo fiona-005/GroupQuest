@@ -1,88 +1,33 @@
-Python
-import sqlite3
+import streamlit as st
 
-DB_NAME = "example.db"
+# Page config (muss sehr früh aufgerufen werden)
+st.set_page_config(
+	page_title="Streamlit Demo",
+	page_icon="🧪",
+	layout="centered",
+	initial_sidebar_state="expanded",
+)
 
-def get_connection():
-    """Erstellt eine Verbindung zur Datenbank und gibt sie zurück."""
-    conn = sqlite3.connect(DB_NAME)
-    conn.row_factory = sqlite3.Row
-    return conn
+# Title
+st.title("Streamlit Demo App")
 
-def setup_database():
-    """Initialisiert die Tabellenstruktur."""
-    with get_connection() as conn:
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                email TEXT UNIQUE,
-                age INTEGER,
-                created_at TEXT DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
-        conn.commit()
+# Text
+st.write("Diese App zeigt ein paar grundlegende Streamlit-Widgets.")
+st.text("st.text() ist für einfachen, unformatierten Text.")
 
-def create_user(name, email, age):
-    """CREATE: Fügt einen neuen User hinzu."""
-    try:
-        with get_connection() as conn:
-            cur = conn.cursor()
-            cur.execute(
-                "INSERT INTO users (name, email, age) VALUES (?, ?, ?)",
-                (name, email, age)
-            )
-            conn.commit()
-            return cur.lastrowid
-            
-    except sqlite3.IntegrityError:
-        print(f"Fehler: Email {email} existiert bereits.")
-        return None
+# Text input
+name = st.text_input("Wie heißt du?", value="")
 
-def read_users():
-    """READ: Gibt alle User als Liste von Dicts zurück."""
-    with get_connection() as conn:
-        cur = conn.cursor()
-        cur.execute("SELECT * FROM users ORDER BY id")
-        return [dict(row) for row in cur.fetchall()]
+# Slider
+wert = st.slider("Wähle einen Wert", min_value=0, max_value=100, value=50, step=1)
 
-def update_user_age(user_id, new_age):
-    """UPDATE: Aktualisiert das Alter eines spezifischen Users."""
-    with get_connection() as conn:
-        conn.execute(
-            "UPDATE users SET age = ? WHERE id = ?",
-            (new_age, user_id)
-        )
-        conn.commit()
+# Button
+if st.button("Ausgeben"):
+	if name.strip():
+		st.success(f"Hallo {name}! Dein Slider-Wert ist {wert}.")
+	else:
+		st.warning(f"Bitte gib einen Namen ein. Slider-Wert ist {wert}.")
 
-def delete_user(user_id):
-    """DELETE: Löscht einen User anhand der ID."""
-    with get_connection() as conn:
-        conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
-        conn.commit()
-
-
-# 1. Datenbank vorbereiten
-setup_database()
-
-# 2. CREATE
-new_id = create_user("Alex", "alex@web.de", 28)
-create_user("Sam", "sam@example.com", 31)
-print(f"User mit ID {new_id} erstellt.")
-
-# 3. READ (Vor dem Update)
-print("Alle User aktuell:")
-for user in read_users():
-    print(user)
-
-# 4. UPDATE
-if new_id:
-    update_user_age(new_id, 29)
-    print(f"Alter von User {new_id} auf 29 aktualisiert.")
-
-# 5. DELETE
-# delete_user(new_id)
-
-# Finales Ergebnis
-print("Endergebnis in der Datenbank:")
-print(read_users())
+# Optional: Live-Ausgabe ohne Button
+st.caption("Live-Status")
+st.write({"name": name, "wert": wert})
