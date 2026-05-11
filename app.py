@@ -145,8 +145,11 @@ if "active_quest" not in st.session_state:
 if "quests" not in st.session_state:
     st.session_state.quests = []
 
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+
 if "page" not in st.session_state:
-    st.session_state.page = "feed"
+    st.session_state.page = "account"
 
 if "comment_inputs" not in st.session_state:
     st.session_state.comment_inputs = {}
@@ -202,8 +205,14 @@ def page_account():
             st.error("Bitte AGB akzeptieren!")
         elif not email:
             st.error("E-Mail fehlt!")
+        elif not vorname.strip():
+            st.error("Bitte einen Vornamen eingeben.")
         else:
-            st.success(f"Danke, {vorname}! Dein Profil wurde erstellt.")
+            st.session_state.logged_in = True
+            st.session_state.user_name = vorname.strip()
+            st.session_state.user_initials = (vorname[0] + (nachname[0] if nachname else "")).upper()
+            st.session_state.page = "feed"
+            st.rerun()
 
 
 def page_quest_erstellen():
@@ -518,20 +527,21 @@ def page_level():
 st.sidebar.title("🍓 Questify")
 st.sidebar.divider()
 
-if st.sidebar.button("🏠 Feed", use_container_width=True):
-    st.session_state.page = "feed"
+if not st.session_state.logged_in:
+    # Vor dem Login: nur Account erstellen anzeigen
+    st.sidebar.button("👤 Account erstellen", use_container_width=True, disabled=True)
+else:
+    # Nach dem Login: alle Seiten
+    if st.sidebar.button("🏠 Feed", use_container_width=True):
+        st.session_state.page = "feed"
 
-if st.sidebar.button("⚔️ Quest erstellen", use_container_width=True):
-    st.session_state.page = "quest"
+    if st.sidebar.button("⚔️ Quest erstellen", use_container_width=True):
+        st.session_state.page = "quest"
 
-if st.sidebar.button("🏆 Mein Level", use_container_width=True):
-    st.session_state.page = "level"
+    if st.sidebar.button("🏆 Mein Level", use_container_width=True):
+        st.session_state.page = "level"
 
-if st.sidebar.button("👤 Account erstellen", use_container_width=True):
-    st.session_state.page = "account"
-
-# Kompaktes Level-Widget in der Sidebar
-if st.session_state.xp > 0 or True:  # immer anzeigen
+    # Kompaktes Level-Widget in der Sidebar
     info = get_level_info(st.session_state.xp)
     pct  = int(info["progress"] * 100)
     st.sidebar.divider()
@@ -558,15 +568,17 @@ if st.session_state.xp > 0 or True:  # immer anzeigen
         unsafe_allow_html=True,
     )
 
-if st.session_state.active_quest:
-    st.sidebar.divider()
-    st.sidebar.markdown(f"**Aktive Quest:**  \n{st.session_state.active_quest['name']}")
+    if st.session_state.active_quest:
+        st.sidebar.divider()
+        st.sidebar.markdown(f"**Aktive Quest:**  \n{st.session_state.active_quest['name']}")
 
 # ── Router ───────────────────────────────────────────────────────────────────
 
 st.title("🍓 Questify")
 
-if st.session_state.page == "feed":
+if not st.session_state.logged_in:
+    page_account()
+elif st.session_state.page == "feed":
     page_feed()
 elif st.session_state.page == "quest":
     page_quest_erstellen()
