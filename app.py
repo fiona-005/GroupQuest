@@ -50,7 +50,17 @@ with st.form("quest_form"):
         start_datum = st.date_input("Startdatum", value=date.today())
     with col2:
         end_datum = st.date_input("Enddatum", value=date.today() + timedelta(days=7))
- 
+    
+    col3, col4 = st.columns(2)
+
+    with col3: 
+
+        Ort = st.selectbox("Orte", ["für zu Hause", "im Freien", "im Fitnessstudio", "sonstiges"], index=None, placeholder="Bitte wählen Sie den Ort der Challenge")
+
+    with col4: 
+
+        Schwierig = st.selectbox("Schwierigkeitslevel", ["Einfach", "Mittel", "Schwer", "Sehr Schwer"], index=None, placeholder="Bitte wählen Sie den Ort der Challenge")
+
     beschreibung = st.text_area("Beschreibung", height=200)
  
     submitted = st.form_submit_button("Quest starten")
