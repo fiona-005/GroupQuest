@@ -1091,7 +1091,7 @@ if st.sidebar.button("🏆 Mein Level", use_container_width=True):
 if st.sidebar.button("👤 Account erstellen", use_container_width=True):
     st.session_state.page = "account"
 
-if st.sidebar.button("⚔️ Exploring Quests", use_container_width=True):
+if st.sidebar.button("🌍 Exploring Quests", use_container_width=True):
     st.session_state.page = "explore"
 
 # Kompaktes Level-Widget in der Sidebar
