@@ -640,6 +640,9 @@ else:
 
     if st.sidebar.button("👥 Meine Freunde", use_container_width=True):
         st.session_state.page = "freunde"
+    
+    if st.sidebar.button("⚔️ Exploring Quests", use_container_width=True):
+        st.session_state.page = "explore"
 
     # Kompaktes Level-Widget in der Sidebar
     info = get_level_info(st.session_state.xp)
