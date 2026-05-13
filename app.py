@@ -1217,7 +1217,7 @@ st.sidebar.divider()
 if st.sidebar.button("👤 Account erstellen", use_container_width=True):
     st.session_state.page = "account"
 
-if st.sidebar.button("🏠 Feed", use_container_width=True):
+if st.sidebar.button("📤 Fortschritt teilen", use_container_width=True):
     st.session_state.page = "feed"
 
 if st.sidebar.button("✨ For You", use_container_width=True):
