@@ -850,7 +850,98 @@ def page_level():
             XP werden automatisch vergeben, wenn du im Feed einen Fortschritt postest.
             """
         )
+def page_archiv():
+    st.markdown("## 📦 Quest-Archiv")
 
+    archiv = st.session_state.get("archiv", [])
+
+    if not archiv:
+        st.markdown(
+            """
+            <div style="text-align:center;padding:3rem 1rem;color:#aaa">
+              <div style="font-size:48px;margin-bottom:12px">📭</div>
+              <div style="font-size:16px;font-weight:500;margin-bottom:6px">Noch keine abgeschlossenen Quests</div>
+              <div style="font-size:13px">Schließe deine erste Quest ab, um sie hier zu sehen.</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        return
+
+    # Statistik-Header
+    total_xp_earned = sum(
+        (q.get("days_total", 0) * XP_PER_DAY.get(q.get("schwierigkeit", "Einfach"), 5))
+        + XP_COMPLETION_BONUS.get(q.get("schwierigkeit", "Einfach"), 20)
+        for q in archiv
+    )
+    col_s1, col_s2 = st.columns(2)
+    col_s1.metric("✅ Abgeschlossene Quests", len(archiv))
+    col_s2.metric("⭐ Gesamt verdiente XP", total_xp_earned)
+
+    st.divider()
+
+    # Archiv-Karten (neueste zuerst)
+    for q in reversed(archiv):
+        schwierigkeit  = q.get("schwierigkeit", "Einfach")
+        ort            = q.get("ort") or "sonstiges"
+        icon           = LOCATION_ICONS.get(ort, "📍")
+        badge_style    = BADGE_STYLES.get(schwierigkeit, "background:#f0f0f0;color:#555")
+        days_total     = q.get("days_total", 0)
+        xp_day         = XP_PER_DAY.get(schwierigkeit, 5)
+        xp_bonus       = q.get("xp_bonus", XP_COMPLETION_BONUS.get(schwierigkeit, 20))
+        xp_total       = days_total * xp_day + xp_bonus
+        start_str      = q["start"].strftime("%d.%m.%Y") if isinstance(q["start"], date) else q["start"]
+        end_str        = q["end"].strftime("%d.%m.%Y") if isinstance(q["end"], date) else q["end"]
+        abschluss_str  = q.get("abgeschlossen_am", "–")
+
+        st.markdown(
+            f"""
+            <div style="background:linear-gradient(135deg,#f9fff5,#f0fbe8);
+                        border:1px solid #d4edbe;border-radius:14px;
+                        padding:16px 18px;margin-bottom:14px;position:relative">
+
+              <!-- Grünes Abzeichen oben rechts -->
+              <div style="position:absolute;top:14px;right:14px;
+                          background:#2ecc71;color:white;border-radius:99px;
+                          font-size:11px;font-weight:600;padding:3px 10px">
+                ✅ Abgeschlossen
+              </div>
+
+              <!-- Titel & Schwierigkeit -->
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;
+                          padding-right:120px">
+                <span style="font-size:16px;font-weight:600">{icon} {q['name']}</span>
+                <span style="font-size:11px;padding:2px 8px;border-radius:99px;
+                             {badge_style}">{schwierigkeit}</span>
+              </div>
+
+              <!-- Meta-Infos -->
+              <div style="display:flex;flex-wrap:wrap;gap:10px;
+                          font-size:12px;color:#555;margin-bottom:10px">
+                <span>📅 {start_str} – {end_str}</span>
+                <span>⏱ {days_total} Tage</span>
+                <span>📍 {ort}</span>
+                <span>🏁 Abgeschlossen am {abschluss_str}</span>
+              </div>
+
+              <!-- XP-Zusammenfassung -->
+              <div style="background:rgba(46,204,113,0.12);border-radius:8px;
+                          padding:8px 12px;display:flex;justify-content:space-between;
+                          align-items:center">
+                <div style="font-size:12px;color:#2d7a4f">
+                  <span>{days_total} Tage × +{xp_day} XP</span>
+                  <span style="margin:0 6px">+</span>
+                  <span>Bonus +{xp_bonus} XP</span>
+                </div>
+                <div style="font-size:15px;font-weight:700;color:#2d7a4f">
+                  ⭐ {xp_total} XP
+                </div>
+              </div>
+
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
 def page_rangliste():
     st.markdown(
