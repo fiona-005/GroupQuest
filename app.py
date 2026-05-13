@@ -273,7 +273,6 @@ def page_account():
             nachname = st.text_input("Nachname")
 
         email = st.text_input("E-Mail")
-        nachricht = st.text_area("Nachricht")
         zustimmung = st.checkbox("Ich stimme den AGB zu")
         submitted = st.form_submit_button("Absenden", type="primary")
 
