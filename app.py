@@ -462,74 +462,7 @@ def page_feed():
             award_xp(XP_PER_DAY.get(schwierigkeit, 5), reason="Fortschritt geteilt")
             st.rerun()
 
-    st.divider()
-    st.markdown("### 🗂️ Feed")
-
-    for post in st.session_state.posts:
-        pid = post["id"]
-        with st.container(border=True):
-            col_av, col_info, col_day = st.columns([0.08, 0.72, 0.2])
-            with col_av:
-                st.markdown(
-                    f"<div style='width:36px;height:36px;border-radius:50%;background:#FBEAF0;"
-                    f"color:#E23D5B;display:flex;align-items:center;justify-content:center;"
-                    f"font-size:12px;font-weight:500'>{post['initials']}</div>",
-                    unsafe_allow_html=True,
-                )
-            with col_info:
-                st.markdown(
-                    f"**{post['author']}** &nbsp; <span style='font-size:12px;color:gray'>{post['time']}</span>",
-                    unsafe_allow_html=True,
-                )
-            with col_day:
-                st.markdown(
-                    f"<span style='font-size:11px;background:#f0f0f0;border-radius:20px;"
-                    f"padding:2px 8px;color:#555'>Tag {post['day']}</span>",
-                    unsafe_allow_html=True,
-                )
-
-            if post["img"]:
-                st.image(post["img"], use_container_width=True)
-
-            st.markdown(post["text"])
-
-            col_like, col_comment, _ = st.columns([0.2, 0.25, 0.55])
-            with col_like:
-                heart = "❤️" if post["liked"] else "🤍"
-                if st.button(f"{heart} {post['likes']}", key=f"like_{pid}"):
-                    like_post(pid, "posts")
-                    st.rerun()
-            with col_comment:
-                n_comments = len(post["comments"])
-                show_key = f"show_comments_{pid}"
-                if show_key not in st.session_state:
-                    st.session_state[show_key] = False
-                if st.button(f"💬 {n_comments}", key=f"toggle_comments_{pid}"):
-                    st.session_state[show_key] = not st.session_state[show_key]
-                    st.rerun()
-
-            if st.session_state.get(f"show_comments_{pid}", False):
-                if post["comments"]:
-                    for c in post["comments"]:
-                        st.markdown(
-                            f"<div style='background:#f8f8f8;border-radius:8px;padding:8px 12px;"
-                            f"margin:4px 0;font-size:13px'>"
-                            f"<strong>{c['author']}</strong>: {c['text']}</div>",
-                            unsafe_allow_html=True,
-                        )
-                else:
-                    st.caption("Noch keine Kommentare.")
-
-                with st.form(f"comment_form_{pid}", clear_on_submit=True):
-                    new_comment = st.text_input(
-                        "Kommentar schreiben...", key=f"cinput_{pid}", label_visibility="collapsed"
-                    )
-                    c_submitted = st.form_submit_button("Senden")
-                    if c_submitted and new_comment.strip():
-                        add_comment(pid, new_comment.strip(), "posts")
-                        st.rerun()
-
-
+    
 def page_for_you():
     st.markdown(
         """
@@ -1280,6 +1213,10 @@ def explore_quest():
 st.sidebar.title("🍓 Questify")
 st.sidebar.divider()
 
+
+if st.sidebar.button("👤 Account erstellen", use_container_width=True):
+    st.session_state.page = "account"
+
 if st.sidebar.button("🏠 Feed", use_container_width=True):
     st.session_state.page = "feed"
 
@@ -1294,9 +1231,6 @@ if st.sidebar.button("🏆 Mein Level", use_container_width=True):
 
 if st.sidebar.button("🥇 Rangliste", use_container_width=True):
     st.session_state.page = "rangliste"
-
-if st.sidebar.button("👤 Account erstellen", use_container_width=True):
-    st.session_state.page = "account"
 
 if st.sidebar.button("🌍 Exploring Quests", use_container_width=True):
     st.session_state.page = "explore"
