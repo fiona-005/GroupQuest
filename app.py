@@ -945,86 +945,69 @@ def page_archiv():
         )
 
 def page_rangliste():
-    st.markdown(
-        """
-        <div style="background:linear-gradient(135deg,#1a1a2e,#16213e);
-                    border-radius:14px;padding:1.2rem 1.6rem;color:white;margin-bottom:1.5rem">
-          <div style="font-size:22px;font-weight:700;letter-spacing:-0.3px">🏆 Rangliste</div>
-          <div style="font-size:13px;opacity:0.85;margin-top:4px">
-            Wer hat die meisten Quests abgeschlossen?
-          </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    st.markdown("## 🏆 Rangliste")
+    
+    # Filter-Buttons für die Ansicht
+    col_f1, col_f2 = st.columns(2)
+    with col_f1:
+        if st.button("Quests", use_container_width=True):
+            st.session_state.lb_filter = "Quests"
+    with col_f2:
+        if st.button("XP / Level", use_container_width=True):
+            st.session_state.lb_filter = "XP"
 
-    # ── Filter-Tabs ──────────────────────────────────────────────────────────
-    col1, col2, col3 = st.columns(3)
-    for col, label in zip([col1, col2, col3], ["Quests", "XP", "🔥 Streak"]):
-        is_active = st.session_state.lb_filter == label
-        style = (
-            "background:#E23D5B;color:white;border:none;border-radius:20px;"
-            "padding:6px 14px;font-size:13px;font-weight:500;cursor:pointer;width:100%"
-            if is_active else
-            "background:#f5f5f5;color:#555;border:none;border-radius:20px;"
-            "padding:6px 14px;font-size:13px;cursor:pointer;width:100%"
-        )
-        with col:
-            if st.button(label, key=f"lb_{label}", use_container_width=True):
-                st.session_state.lb_filter = label
-                st.rerun()
-
-    st.markdown("<br>", unsafe_allow_html=True)
-
-    # ── Leaderboard-Daten ────────────────────────────────────────────────────
-    leaderboard = [
-        {"name": "Lena M.",   "initials": "LM", "quests": 8, "xp": 1240, "streak": 14},
-        {"name": "Marco K.",  "initials": "MK", "quests": 6, "xp": 980,  "streak": 12},
-        {"name": "Felix R.",  "initials": "FR", "quests": 5, "xp": 860,  "streak": 7 },
-        {"name": "Jana T.",   "initials": "JT", "quests": 4, "xp": 620,  "streak": 5 },
-        {"name": "Sophie W.", "initials": "SW", "quests": 3, "xp": 540,  "streak": 5 },
-        {
-            "name":    "Du",
-            "initials":"DU",
-            "quests":  len(st.session_state.quests),
-            "xp":      st.session_state.xp,
-            "streak":  1,
-        },
+    # Daten für die Rangliste vorbereiten
+    # Wir kombinieren deine Daten mit den Beispieldaten der Freunde
+    leaderboard_data = [
+        {"Name": "Du", "Quests": len(st.session_state.quests), "XP": st.session_state.xp, "Level": get_level_info(st.session_state.xp)["level"]},
+        {"Name": "Lena M.", "Quests": 5, "XP": 1250, "Level": 4},
+        {"Name": "Marco K.", "Quests": 3, "XP": 800, "Level": 3},
+        {"Name": "Felix R.", "Quests": 8, "XP": 2100, "Level": 6},
+        {"Name": "Sophie W.", "Quests": 4, "XP": 950, "Level": 3},
     ]
 
-    sort_key  = {"Quests": "quests", "XP": "xp", "🔥 Streak": "streak"}[st.session_state.lb_filter]
-    lb_labels = {"quests": "Quests", "xp": "XP", "streak": "Tage"}
-    leaderboard.sort(key=lambda x: x[sort_key], reverse=True)
+    # Sortierung je nach Filter
+    if st.session_state.lb_filter == "Quests":
+        sorted_data = sorted(leaderboard_data, key=lambda x: x["Quests"], reverse=True)
+        sort_icon = "⚔️"
+    else:
+        sorted_data = sorted(leaderboard_data, key=lambda x: x["XP"], reverse=True)
+        sort_icon = "⭐"
 
-    medals  = ["🥇", "🥈", "🥉"]
-    max_val = leaderboard[0][sort_key] if leaderboard else 1
+    # Anzeige der Rangliste
+    st.markdown(f"### Top Teilnehmer (nach {st.session_state.lb_filter})")
+    
+    for i, entry in enumerate(sorted_data):
+        # Medaillen für die ersten drei Plätze
+        rank_display = f"{i+1}."
+        if i == 0: rank_display = "🥇"
+        elif i == 1: rank_display = "🥈"
+        elif i == 2: rank_display = "🥉"
+        
+        # Highlight für den eigenen Namen
+        bg_color = "#FFF0F3" if entry["Name"] == "Du" else "#ffffff"
+        border_color = "#E23D5B" if entry["Name"] == "Du" else "#eeeeee"
 
-    # ── Podium Top 3 ─────────────────────────────────────────────────────────
-    st.markdown("### 🎖️ Top 3")
-    cols = st.columns(3)
-    podium_borders = ["#E23D5B", "#c9a227", "#8b7355"]
-    for i, entry in enumerate(leaderboard[:3]):
-        with cols[i]:
-            is_me  = entry["name"] == "Du"
-            border = podium_borders[i]
-            st.markdown(
-                f"""
-                <div style="border:1.5px solid {border};border-radius:12px;
-                            padding:14px 10px;text-align:center;margin-bottom:8px">
-                  <div style="font-size:22px">{medals[i]}</div>
-                  <div style="width:44px;height:44px;border-radius:50%;
-                              background:{'#E23D5B' if is_me else '#FBEAF0'};
-                              color:{'white' if is_me else '#E23D5B'};
-                              display:flex;align-items:center;justify-content:center;
-                              font-size:14px;font-weight:600;margin:6px auto">{entry['initials']}</div>
-                  <div style="font-size:13px;font-weight:600">{entry['name']}</div>
-                  <div style="font-size:13px;color:#E23D5B;font-weight:500;margin-top:4px">
-                    {entry[sort_key]} {lb_labels[sort_key]}
-                  </div>
+        st.markdown(
+            f"""
+            <div style="background:{bg_color}; border: 1px solid {border_color}; 
+                        padding: 10px 15px; border-radius: 10px; margin-bottom: 8px;
+                        display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <span style="font-size: 18px; font-weight: bold; width: 30px;">{rank_display}</span>
+                    <div>
+                        <div style="font-weight: 600; font-size: 15px;">{entry['Name']}</div>
+                        <div style="font-size: 12px; color: gray;">Level {entry['Level']}</div>
+                    </div>
                 </div>
-                """,
-                unsafe_allow_html=True,
-            )
+                <div style="text-align: right;">
+                    <div style="font-weight: bold; color: #E23D5B;">{entry['Quests']} Quests</div>
+                    <div style="font-size: 11px; color: gray;">{entry['XP']} XP</div>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
     st.markdown("<br>", unsafe_allow_html=True)
 
