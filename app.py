@@ -23,7 +23,8 @@ def init_db():
         CREATE TABLE IF NOT EXISTS users (
             email     TEXT PRIMARY KEY,
             vorname   TEXT,
-            nachname  TEXT
+            nachname  TEXT,
+            xp        INTEGER DEFAULT 0
         )
     """)
     c.execute("""
@@ -1288,7 +1289,7 @@ nav_items = [
     ("✨ For You",           "for_you"),
     ("⚔️ Quest erstellen",  "quest"),
     ("🏆 Mein Level",       "level"),
-    ("🥇 Rangliste",        "rangliste"),
+    #("🥇 Rangliste",        "rangliste"),
     ("🌍 Exploring Quests", "explore"),
     ("📦 Quest-Archiv",     "archiv"),
 ]
