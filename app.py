@@ -182,6 +182,7 @@ if "posts" not in st.session_state:
             "img": None,
             "likes": 6,
             "liked": False,
+            "img": "run.jpeg",
             "comments": [],
             "quest_name": "30 Tage Laufen",
             "schwierigkeit": "Schwer",
