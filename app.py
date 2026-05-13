@@ -840,7 +840,235 @@ def page_level():
         )
 
 def explore_quest():
-    st.markdown("## 👥 Explore Quests")
+    st.markdown("## 🌍 Explore Quests")
+
+    EXPLORE_QUESTS = [
+        {
+            "id": "eq1",
+            "name": "30 Tage Morgenroutine",
+            "schwierigkeit": "Mittel",
+            "ort": "für zu Hause",
+            "days_total": 30,
+            "beschreibung": "Stehe jeden Tag zur gleichen Zeit auf und starte mit einer festen Morgenroutine in den Tag – ob Meditation, Sport oder Journaling.",
+            "teilnehmer": 1243,
+            "emoji": "🌅",
+        },
+        {
+            "id": "eq2",
+            "name": "30 Tage Gym",
+            "schwierigkeit": "Schwer",
+            "ort": "im Fitnessstudio",
+            "days_total": 30,
+            "beschreibung": "Gehe 30 Tage in Folge ins Fitnessstudio. Kein Tag wird ausgelassen – Konsequenz ist der Schlüssel zum Erfolg.",
+            "teilnehmer": 876,
+            "emoji": "🏋️",
+        },
+        {
+            "id": "eq3",
+            "name": "7 Tage Digital Detox",
+            "schwierigkeit": "Sehr Schwer",
+            "ort": "für zu Hause",
+            "days_total": 7,
+            "beschreibung": "Verzichte eine Woche lang auf Social Media und nicht notwendige Bildschirmzeit. Entdecke, was du mit der gewonnenen Zeit anfängst.",
+            "teilnehmer": 512,
+            "emoji": "📵",
+        },
+        {
+            "id": "eq4",
+            "name": "14 Tage täglich lesen",
+            "schwierigkeit": "Einfach",
+            "ort": "für zu Hause",
+            "days_total": 14,
+            "beschreibung": "Lies jeden Tag mindestens 20 Minuten in einem Buch deiner Wahl. Bildung und Entspannung in einem.",
+            "teilnehmer": 2041,
+            "emoji": "📖",
+        },
+        {
+            "id": "eq5",
+            "name": "21 Tage Laufen",
+            "schwierigkeit": "Mittel",
+            "ort": "im Freien",
+            "days_total": 21,
+            "beschreibung": "Laufe 21 Tage lang mindestens 20 Minuten am Stück. Egal ob Regen oder Sonnenschein – du ziehst es durch!",
+            "teilnehmer": 694,
+            "emoji": "🏃",
+        },
+        {
+            "id": "eq6",
+            "name": "30 Tage gesund ernähren",
+            "schwierigkeit": "Schwer",
+            "ort": "für zu Hause",
+            "days_total": 30,
+            "beschreibung": "Koche jeden Tag selbst und verzichte auf Fast Food, Zucker und verarbeitete Lebensmittel. Dein Körper wird es dir danken.",
+            "teilnehmer": 1105,
+            "emoji": "🥗",
+        },
+    ]
+
+    # Session-State für den aktuellen Karten-Index und gesehene Quests
+    if "explore_index" not in st.session_state:
+        st.session_state.explore_index = 0
+    if "explore_accepted" not in st.session_state:
+        st.session_state.explore_accepted = []
+    if "explore_rejected" not in st.session_state:
+        st.session_state.explore_rejected = []
+
+    idx = st.session_state.explore_index
+    seen = st.session_state.explore_accepted + st.session_state.explore_rejected
+    remaining = [q for q in EXPLORE_QUESTS if q["id"] not in seen]
+
+    if not remaining:
+        st.markdown(
+            """
+            <div style="text-align:center;padding:3rem 1rem">
+              <div style="font-size:48px;margin-bottom:1rem">🎉</div>
+              <div style="font-size:20px;font-weight:600;margin-bottom:0.5rem">Alle Quests gesehen!</div>
+              <div style="font-size:14px;color:gray;margin-bottom:1.5rem">
+                Du hast alle verfügbaren Quests durchgesehen.
+              </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        if st.session_state.explore_accepted:
+            st.markdown("### ✅ Angenommene Quests")
+            for qid in st.session_state.explore_accepted:
+                match = next((q for q in EXPLORE_QUESTS if q["id"] == qid), None)
+                if match:
+                    st.success(f"{match['emoji']} **{match['name']}** – {match['schwierigkeit']}")
+        if st.button("🔄 Neu starten", type="primary"):
+            st.session_state.explore_accepted = []
+            st.session_state.explore_rejected = []
+            st.rerun()
+        return
+
+    quest = remaining[0]
+    schwierigkeit = quest["schwierigkeit"]
+    badge_style = BADGE_STYLES.get(schwierigkeit, "background:#f0f0f0;color:#555")
+    ort_icon = LOCATION_ICONS.get(quest["ort"], "📍")
+    xp_day = XP_PER_DAY.get(schwierigkeit, 5)
+    xp_bonus = XP_COMPLETION_BONUS.get(schwierigkeit, 20)
+    total_xp = quest["days_total"] * xp_day + xp_bonus
+
+    # Fortschritts-Zähler
+    total_seen = len(seen)
+    total_quests = len(EXPLORE_QUESTS)
+    st.markdown(
+        f"<div style='text-align:center;font-size:12px;color:gray;margin-bottom:0.5rem'>"
+        f"Quest {total_seen + 1} von {total_quests}</div>",
+        unsafe_allow_html=True,
+    )
+
+    # ── Quest-Karte ──────────────────────────────────────────────────────────
+    st.markdown(
+        f"""
+        <div style="background:#fff;border:1px solid #f0f0f0;border-radius:20px;
+                    padding:2rem 1.6rem;box-shadow:0 8px 32px rgba(0,0,0,0.10);
+                    max-width:480px;margin:0 auto 1.5rem">
+
+          <!-- Emoji & Titel -->
+          <div style="text-align:center;margin-bottom:1.2rem">
+            <div style="font-size:56px;margin-bottom:0.5rem">{quest['emoji']}</div>
+            <div style="font-size:21px;font-weight:700;letter-spacing:-0.3px;margin-bottom:0.4rem">
+              {quest['name']}
+            </div>
+            <span style="font-size:12px;padding:3px 10px;border-radius:99px;{badge_style}">
+              {schwierigkeit}
+            </span>
+          </div>
+
+          <!-- Beschreibung -->
+          <div style="font-size:14px;color:#444;line-height:1.65;
+                      background:#fafafa;border-radius:10px;padding:12px 14px;
+                      margin-bottom:1.2rem">
+            {quest['beschreibung']}
+          </div>
+
+          <!-- Stats-Reihe -->
+          <div style="display:flex;justify-content:space-around;text-align:center;
+                      margin-bottom:1.2rem">
+            <div>
+              <div style="font-size:18px;font-weight:600;color:#E23D5B">{quest['days_total']}</div>
+              <div style="font-size:11px;color:gray">Tage</div>
+            </div>
+            <div style="width:1px;background:#f0f0f0"></div>
+            <div>
+              <div style="font-size:18px;font-weight:600;color:#E23D5B">+{total_xp}</div>
+              <div style="font-size:11px;color:gray">Max XP</div>
+            </div>
+            <div style="width:1px;background:#f0f0f0"></div>
+            <div>
+              <div style="font-size:18px;font-weight:600;color:#E23D5B">{quest['teilnehmer']:,}</div>
+              <div style="font-size:11px;color:gray">Teilnehmer</div>
+            </div>
+          </div>
+
+          <!-- Ort & XP-Details -->
+          <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center">
+            <span style="font-size:12px;background:#f5f5f5;border-radius:99px;
+                         padding:4px 12px;color:#555">
+              {ort_icon} {quest['ort']}
+            </span>
+            <span style="font-size:12px;background:#FFF0F3;border-radius:99px;
+                         padding:4px 12px;color:#E23D5B">
+              +{xp_day} XP/Tag
+            </span>
+            <span style="font-size:12px;background:#EAF3DE;border-radius:99px;
+                         padding:4px 12px;color:#3B6D11">
+              +{xp_bonus} XP Bonus
+            </span>
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # ── Annehmen / Ablehnen Buttons ──────────────────────────────────────────
+    col_reject, col_spacer, col_accept = st.columns([0.38, 0.24, 0.38])
+
+    with col_reject:
+        if st.button("❌ Ablehnen", use_container_width=True, key="explore_reject"):
+            st.session_state.explore_rejected.append(quest["id"])
+            st.rerun()
+
+    with col_accept:
+        if st.button("✅ Annehmen", use_container_width=True, key="explore_accept", type="primary"):
+            st.session_state.explore_accepted.append(quest["id"])
+            # Quest direkt als aktive Quest übernehmen
+            new_quest = {
+                "name": quest["name"],
+                "start": date.today(),
+                "end": date.today() + timedelta(days=quest["days_total"]),
+                "ort": quest["ort"],
+                "schwierigkeit": quest["schwierigkeit"],
+                "beschreibung": quest["beschreibung"],
+                "days_total": quest["days_total"],
+            }
+            st.session_state.quests.append(new_quest)
+            st.session_state.active_quest = new_quest
+            st.success(f"Quest **{quest['name']}** wurde angenommen und ist jetzt aktiv! 🎉")
+            st.rerun()
+
+    # ── Swipe-Tipp ───────────────────────────────────────────────────────────
+    st.markdown(
+        "<div style='text-align:center;font-size:11px;color:#bbb;margin-top:0.5rem'>"
+        "❌ Ablehnen &nbsp;·&nbsp; ✅ Annehmen</div>",
+        unsafe_allow_html=True,
+    )
+
+    # ── Bereits angenommen (kompakt) ─────────────────────────────────────────
+    if st.session_state.explore_accepted:
+        st.markdown("<br>", unsafe_allow_html=True)
+        with st.expander(f"✅ Angenommene Quests ({len(st.session_state.explore_accepted)})"):
+            for qid in st.session_state.explore_accepted:
+                match = next((q for q in EXPLORE_QUESTS if q["id"] == qid), None)
+                if match:
+                    st.markdown(
+                        f"{match['emoji']} **{match['name']}** &nbsp;"
+                        f"<span style='font-size:11px;color:gray'>{match['schwierigkeit']} · "
+                        f"{match['days_total']} Tage</span>",
+                        unsafe_allow_html=True,
+                    )
 
 # ── Sidebar Navigation ───────────────────────────────────────────────────────
 
