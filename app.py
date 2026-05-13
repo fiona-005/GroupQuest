@@ -1353,8 +1353,8 @@ if st.session_state.active_quest:
 
 st.title("🍓 Questify")
 
-if st.session_state.page == "feed":
-    page_feed()
+if st.session_state.page == "account":
+    page_account()
 elif st.session_state.page == "for_you":
     page_for_you()
 elif st.session_state.page == "quest":
@@ -1363,7 +1363,7 @@ elif st.session_state.page == "level":
     page_level()
 elif st.session_state.page == "rangliste":
     page_rangliste()
-elif st.session_state.page == "account":
-    page_account()
+elif st.session_state.page == "feed":
+    page_feed()
 elif st.session_state.page == "explore":
     explore_quest()
