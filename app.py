@@ -1210,7 +1210,7 @@ def explore_quest():
 
 # ── Sidebar Navigation ───────────────────────────────────────────────────────
 
-st.sidebar.title("🍓 Questify")
+st.sidebar.title("Questify")
 st.sidebar.divider()
 
 
@@ -1234,6 +1234,9 @@ if st.sidebar.button("🥇 Rangliste", use_container_width=True):
 
 if st.sidebar.button("🌍 Exploring Quests", use_container_width=True):
     st.session_state.page = "explore"
+
+if st.sidebar.button("📦 Quest-Archiv", use_container_width=True):
+    st.session_state.page = "archiv"
 
 # Kompaktes Level-Widget in der Sidebar
 info = get_level_info(st.session_state.xp)
