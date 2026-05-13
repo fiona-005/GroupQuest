@@ -182,6 +182,7 @@ if "posts" not in st.session_state:
             "img": None,
             "likes": 6,
             "liked": False,
+            "img": "run.jpeg",
             "comments": [],
             "quest_name": "30 Tage Laufen",
             "schwierigkeit": "Schwer",
@@ -192,7 +193,6 @@ if "posts" not in st.session_state:
     ]
 
 if "for_you_posts" not in st.session_state:
-    # Separate copies for For-You page
     st.session_state.for_you_posts = [
         {**p} for p in st.session_state.posts
     ]
@@ -215,10 +215,12 @@ if "xp" not in st.session_state:
 if "fy_filter" not in st.session_state:
     st.session_state.fy_filter = "Alle"
 
+if "lb_filter" not in st.session_state:
+    st.session_state.lb_filter = "Quests"
+
 # ── NEU: Täglicher Check-in Status ───────────────────────────────────────────
-# Speichert das Datum des letzten Check-ins pro Quest, um Doppelklicks zu verhindern
 if "daily_checkin" not in st.session_state:
-    st.session_state.daily_checkin = {}  # quest_name -> date string
+    st.session_state.daily_checkin = {}
 
 # ── Hilfsfunktionen ──────────────────────────────────────────────────────────
 
@@ -250,12 +252,10 @@ def add_comment(post_id, text, source="posts"):
             break
 
 def is_checked_in_today(quest_name: str) -> bool:
-    """Gibt True zurück, wenn die Quest heute schon abgehakt wurde."""
     today_str = date.today().isoformat()
     return st.session_state.daily_checkin.get(quest_name) == today_str
 
 def do_daily_checkin(quest_name: str, schwierigkeit: str):
-    """Führt den täglichen Check-in durch und vergibt XP."""
     today_str = date.today().isoformat()
     st.session_state.daily_checkin[quest_name] = today_str
     xp_amount = XP_PER_DAY.get(schwierigkeit, 5)
@@ -273,7 +273,6 @@ def page_account():
             nachname = st.text_input("Nachname")
 
         email = st.text_input("E-Mail")
-        nachricht = st.text_area("Nachricht")
         zustimmung = st.checkbox("Ich stimme den AGB zu")
         submitted = st.form_submit_button("Absenden", type="primary")
 
@@ -356,7 +355,6 @@ def page_feed():
         schwierigkeit = quest.get("schwierigkeit", "Einfach")
         checked_today = is_checked_in_today(quest_name)
 
-        # ── Quest-Banner mit Check-in Button ────────────────────────────────
         col_banner, col_check = st.columns([0.82, 0.18])
 
         with col_banner:
@@ -385,7 +383,6 @@ def page_feed():
 
         with col_check:
             if checked_today:
-                # Bereits abgehakt – grüner Zustand
                 st.markdown(
                     """
                     <div style="display:flex;flex-direction:column;align-items:center;
@@ -401,7 +398,6 @@ def page_feed():
                     unsafe_allow_html=True,
                 )
             else:
-                # Noch nicht abgehakt – klickbarer Button
                 st.markdown("<div style='padding-top:4px'>", unsafe_allow_html=True)
                 if st.button(
                     "✔",
@@ -422,7 +418,6 @@ def page_feed():
     else:
         st.info("Du hast noch keine aktive Quest. Erstelle eine über die Sidebar!")
 
-    # ── Fortschritt teilen ───────────────────────────────────────────────────
     st.markdown("### 📤 Fortschritt teilen")
     with st.form("post_form", clear_on_submit=True):
         post_text = st.text_area(
@@ -459,7 +454,6 @@ def page_feed():
             st.session_state.posts.insert(0, new_post)
             st.session_state.for_you_posts.insert(0, {**new_post})
 
-            # XP vergeben
             schwierigkeit = (
                 st.session_state.active_quest.get("schwierigkeit", "Einfach")
                 if st.session_state.active_quest
@@ -468,76 +462,8 @@ def page_feed():
             award_xp(XP_PER_DAY.get(schwierigkeit, 5), reason="Fortschritt geteilt")
             st.rerun()
 
-    st.divider()
-    st.markdown("### 🗂️ Feed")
-
-    for post in st.session_state.posts:
-        pid = post["id"]
-        with st.container(border=True):
-            col_av, col_info, col_day = st.columns([0.08, 0.72, 0.2])
-            with col_av:
-                st.markdown(
-                    f"<div style='width:36px;height:36px;border-radius:50%;background:#FBEAF0;"
-                    f"color:#E23D5B;display:flex;align-items:center;justify-content:center;"
-                    f"font-size:12px;font-weight:500'>{post['initials']}</div>",
-                    unsafe_allow_html=True,
-                )
-            with col_info:
-                st.markdown(
-                    f"**{post['author']}** &nbsp; <span style='font-size:12px;color:gray'>{post['time']}</span>",
-                    unsafe_allow_html=True,
-                )
-            with col_day:
-                st.markdown(
-                    f"<span style='font-size:11px;background:#f0f0f0;border-radius:20px;"
-                    f"padding:2px 8px;color:#555'>Tag {post['day']}</span>",
-                    unsafe_allow_html=True,
-                )
-
-            if post["img"]:
-                st.image(post["img"], use_container_width=True)
-
-            st.markdown(post["text"])
-
-            col_like, col_comment, _ = st.columns([0.2, 0.25, 0.55])
-            with col_like:
-                heart = "❤️" if post["liked"] else "🤍"
-                if st.button(f"{heart} {post['likes']}", key=f"like_{pid}"):
-                    like_post(pid, "posts")
-                    st.rerun()
-            with col_comment:
-                n_comments = len(post["comments"])
-                show_key = f"show_comments_{pid}"
-                if show_key not in st.session_state:
-                    st.session_state[show_key] = False
-                if st.button(f"💬 {n_comments}", key=f"toggle_comments_{pid}"):
-                    st.session_state[show_key] = not st.session_state[show_key]
-                    st.rerun()
-
-            if st.session_state.get(f"show_comments_{pid}", False):
-                if post["comments"]:
-                    for c in post["comments"]:
-                        st.markdown(
-                            f"<div style='background:#f8f8f8;border-radius:8px;padding:8px 12px;"
-                            f"margin:4px 0;font-size:13px'>"
-                            f"<strong>{c['author']}</strong>: {c['text']}</div>",
-                            unsafe_allow_html=True,
-                        )
-                else:
-                    st.caption("Noch keine Kommentare.")
-
-                with st.form(f"comment_form_{pid}", clear_on_submit=True):
-                    new_comment = st.text_input(
-                        "Kommentar schreiben...", key=f"cinput_{pid}", label_visibility="collapsed"
-                    )
-                    c_submitted = st.form_submit_button("Senden")
-                    if c_submitted and new_comment.strip():
-                        add_comment(pid, new_comment.strip(), "posts")
-                        st.rerun()
-
-
+    
 def page_for_you():
-    # ── Header ──────────────────────────────────────────────────────────────
     st.markdown(
         """
         <div style="background:linear-gradient(135deg,#E23D5B,#c0294a);
@@ -551,7 +477,6 @@ def page_for_you():
         unsafe_allow_html=True,
     )
 
-    # ── Freunde-Fortschritt oben ─────────────────────────────────────────────
     st.markdown("### 👥 Freunde – Tages-Fortschritt")
 
     friends_data = [
@@ -588,20 +513,12 @@ def page_for_you():
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # ── Filter-Tabs ──────────────────────────────────────────────────────────
     st.markdown("### 📋 Beiträge")
 
     col_f1, col_f2, col_f3 = st.columns(3)
     filters = ["Alle", "👥 Freunde", "🏆 Gleiche Challenge"]
     for col, label in zip([col_f1, col_f2, col_f3], filters):
         is_active = st.session_state.fy_filter == label
-        style = (
-            "background:#E23D5B;color:white;border:none;border-radius:20px;"
-            "padding:6px 14px;font-size:13px;font-weight:500;cursor:pointer;width:100%"
-            if is_active else
-            "background:#f5f5f5;color:#555;border:none;border-radius:20px;"
-            "padding:6px 14px;font-size:13px;cursor:pointer;width:100%"
-        )
         with col:
             if st.button(label, key=f"filter_{label}", use_container_width=True):
                 st.session_state.fy_filter = label
@@ -609,7 +526,6 @@ def page_for_you():
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # ── Posts filtern ────────────────────────────────────────────────────────
     active_filter = st.session_state.fy_filter
     posts = st.session_state.for_you_posts
 
@@ -622,7 +538,6 @@ def page_for_you():
         st.info("Keine Beiträge für diesen Filter.")
         return
 
-    # ── Post-Karten ──────────────────────────────────────────────────────────
     for post in posts:
         pid = post["id"]
         schwierigkeit = post.get("schwierigkeit", "Einfach")
@@ -632,7 +547,6 @@ def page_for_you():
         is_friend = post.get("is_friend", False)
         same_challenge = post.get("same_challenge", False)
 
-        # Badges vorbereiten
         tag_badges = ""
         if is_friend:
             tag_badges += "<span style='font-size:10px;background:#EEF6FF;color:#2563EB;border-radius:99px;padding:2px 7px;margin-right:4px'>👥 Freund</span>"
@@ -640,7 +554,6 @@ def page_for_you():
             tag_badges += "<span style='font-size:10px;background:#FFF0F3;color:#E23D5B;border-radius:99px;padding:2px 7px'>🏆 Gleiche Challenge</span>"
 
         with st.container(border=True):
-            # Header
             col_av, col_info = st.columns([0.1, 0.9])
             with col_av:
                 st.markdown(
@@ -658,7 +571,6 @@ def page_for_you():
                     unsafe_allow_html=True,
                 )
 
-            # Quest-Kontext-Banner
             st.markdown(
                 f"""
                 <div style="background:#fafafa;border-left:3px solid #E23D5B;border-radius:0 6px 6px 0;
@@ -678,7 +590,6 @@ def page_for_you():
                 unsafe_allow_html=True,
             )
 
-            # Fortschrittsbalken
             st.markdown(
                 f"""
                 <div style="height:4px;background:#f0f0f0;border-radius:2px;
@@ -694,7 +605,6 @@ def page_for_you():
 
             st.markdown(f"<div style='font-size:14px;line-height:1.5;margin-bottom:8px'>{post['text']}</div>", unsafe_allow_html=True)
 
-            # Like & Kommentar
             col_like, col_comment, _ = st.columns([0.22, 0.28, 0.5])
             with col_like:
                 heart = "❤️" if post["liked"] else "🤍"
@@ -710,7 +620,6 @@ def page_for_you():
                     st.session_state[show_key] = not st.session_state[show_key]
                     st.rerun()
 
-            # Kommentare
             if st.session_state.get(f"fy_show_comments_{pid}", False):
                 if post["comments"]:
                     for c in post["comments"]:
@@ -773,10 +682,46 @@ def page_level():
 
     col1, col2, col3 = st.columns(3)
     quests = st.session_state.get("quests", [])
-    active = 1 if st.session_state.get("active_quest") else 0
-    col1.metric("Gesamt-XP",  st.session_state.xp)
-    col2.metric("Quests",     len(quests))
-    col3.metric("Aktiv",      active)
+    streak = st.session_state.get("streak", 0)
+
+    if streak == 0:
+        flame_display = "—"
+        flame_label   = "Kein Streak"
+        flame_color   = "#aaa"
+    elif streak < 3:
+        flame_display = "🔥" * streak
+        flame_label   = f"{streak} Tag{'e' if streak > 1 else ''}"
+        flame_color   = "#E07B39"
+    elif streak < 7:
+        flame_display = "🔥" * min(streak, 5)
+        flame_label   = f"{streak} Tage 🏃"
+        flame_color   = "#E05A1A"
+    elif streak < 14:
+        flame_display = "🔥🔥🔥🔥🔥"
+        flame_label   = f"{streak} Tage 💪"
+        flame_color   = "#C93E00"
+    else:
+        flame_display = "🔥🔥🔥🔥🔥"
+        flame_label   = f"{streak} Tage 👑"
+        flame_color   = "#A52D00"
+
+    col1.metric("Gesamt-XP", st.session_state.xp)
+    col2.metric("Quests",    len(quests))
+
+    with col3:
+        st.markdown(
+            f"""
+            <div style="background:#fff;border:0.5px solid #e0e0e0;border-radius:8px;
+                        padding:10px 14px;text-align:center">
+              <div style="font-size:10px;color:gray;text-transform:uppercase;
+                          letter-spacing:.5px;margin-bottom:4px">Streak</div>
+              <div style="font-size:20px;line-height:1.2">{flame_display}</div>
+              <div style="font-size:13px;font-weight:600;color:{flame_color};
+                          margin-top:3px">{flame_label}</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
     st.markdown("### 📋 Aktive Quests")
     if not quests:
@@ -839,15 +784,440 @@ def page_level():
             """
         )
 
+def page_archiv():
+    st.markdown("## 📦 Quest-Archiv")
+
+    archiv = st.session_state.get("archiv", [])
+
+    if not archiv:
+        st.markdown(
+            """
+            <div style="text-align:center;padding:3rem 1rem;color:#aaa">
+              <div style="font-size:48px;margin-bottom:12px">📭</div>
+              <div style="font-size:16px;font-weight:500;margin-bottom:6px">Noch keine abgeschlossenen Quests</div>
+              <div style="font-size:13px">Schließe deine erste Quest ab, um sie hier zu sehen.</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        return
+
+    # Statistik-Header
+    total_xp_earned = sum(
+        (q.get("days_total", 0) * XP_PER_DAY.get(q.get("schwierigkeit", "Einfach"), 5))
+        + XP_COMPLETION_BONUS.get(q.get("schwierigkeit", "Einfach"), 20)
+        for q in archiv
+    )
+    col_s1, col_s2 = st.columns(2)
+    col_s1.metric("✅ Abgeschlossene Quests", len(archiv))
+    col_s2.metric("⭐ Gesamt verdiente XP", total_xp_earned)
+
+    st.divider()
+
+    # Archiv-Karten (neueste zuerst)
+    for q in reversed(archiv):
+        schwierigkeit  = q.get("schwierigkeit", "Einfach")
+        ort            = q.get("ort") or "sonstiges"
+        icon           = LOCATION_ICONS.get(ort, "📍")
+        badge_style    = BADGE_STYLES.get(schwierigkeit, "background:#f0f0f0;color:#555")
+        days_total     = q.get("days_total", 0)
+        xp_day         = XP_PER_DAY.get(schwierigkeit, 5)
+        xp_bonus       = q.get("xp_bonus", XP_COMPLETION_BONUS.get(schwierigkeit, 20))
+        xp_total       = days_total * xp_day + xp_bonus
+        start_str      = q["start"].strftime("%d.%m.%Y") if isinstance(q["start"], date) else q["start"]
+        end_str        = q["end"].strftime("%d.%m.%Y") if isinstance(q["end"], date) else q["end"]
+        abschluss_str  = q.get("abgeschlossen_am", "–")
+
+        st.markdown(
+            f"""
+            <div style="background:linear-gradient(135deg,#f9fff5,#f0fbe8);
+                        border:1px solid #d4edbe;border-radius:14px;
+                        padding:16px 18px;margin-bottom:14px;position:relative">
+
+              <!-- Grünes Abzeichen oben rechts -->
+              <div style="position:absolute;top:14px;right:14px;
+                          background:#2ecc71;color:white;border-radius:99px;
+                          font-size:11px;font-weight:600;padding:3px 10px">
+                ✅ Abgeschlossen
+              </div>
+
+              <!-- Titel & Schwierigkeit -->
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;
+                          padding-right:120px">
+                <span style="font-size:16px;font-weight:600">{icon} {q['name']}</span>
+                <span style="font-size:11px;padding:2px 8px;border-radius:99px;
+                             {badge_style}">{schwierigkeit}</span>
+              </div>
+
+              <!-- Meta-Infos -->
+              <div style="display:flex;flex-wrap:wrap;gap:10px;
+                          font-size:12px;color:#555;margin-bottom:10px">
+                <span>📅 {start_str} – {end_str}</span>
+                <span>⏱ {days_total} Tage</span>
+                <span>📍 {ort}</span>
+                <span>🏁 Abgeschlossen am {abschluss_str}</span>
+              </div>
+
+              <!-- XP-Zusammenfassung -->
+              <div style="background:rgba(46,204,113,0.12);border-radius:8px;
+                          padding:8px 12px;display:flex;justify-content:space-between;
+                          align-items:center">
+                <div style="font-size:12px;color:#2d7a4f">
+                  <span>{days_total} Tage × +{xp_day} XP</span>
+                  <span style="margin:0 6px">+</span>
+                  <span>Bonus +{xp_bonus} XP</span>
+                </div>
+                <div style="font-size:15px;font-weight:700;color:#2d7a4f">
+                  ⭐ {xp_total} XP
+                </div>
+              </div>
+
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+def page_rangliste():
+    st.markdown("## 🏆 Rangliste")
+    
+    # Filter-Buttons für die Ansicht
+    col_f1, col_f2 = st.columns(2)
+    with col_f1:
+        if st.button("Quests", use_container_width=True):
+            st.session_state.lb_filter = "Quests"
+    with col_f2:
+        if st.button("XP / Level", use_container_width=True):
+            st.session_state.lb_filter = "XP"
+
+    # Daten für die Rangliste vorbereiten
+    # Wir kombinieren deine Daten mit den Beispieldaten der Freunde
+    leaderboard_data = [
+        {"Name": "Du", "Quests": len(st.session_state.quests), "XP": st.session_state.xp, "Level": get_level_info(st.session_state.xp)["level"]},
+        {"Name": "Lena M.", "Quests": 5, "XP": 1250, "Level": 4},
+        {"Name": "Marco K.", "Quests": 3, "XP": 800, "Level": 3},
+        {"Name": "Felix R.", "Quests": 8, "XP": 2100, "Level": 6},
+        {"Name": "Sophie W.", "Quests": 4, "XP": 950, "Level": 3},
+    ]
+
+    # Sortierung je nach Filter
+    if st.session_state.lb_filter == "Quests":
+        sorted_data = sorted(leaderboard_data, key=lambda x: x["Quests"], reverse=True)
+        sort_icon = "⚔️"
+    else:
+        sorted_data = sorted(leaderboard_data, key=lambda x: x["XP"], reverse=True)
+        sort_icon = "⭐"
+
+    # Anzeige der Rangliste
+    st.markdown(f"### Top Teilnehmer (nach {st.session_state.lb_filter})")
+    
+    for i, entry in enumerate(sorted_data):
+        # Medaillen für die ersten drei Plätze
+        rank_display = f"{i+1}."
+        if i == 0: rank_display = "🥇"
+        elif i == 1: rank_display = "🥈"
+        elif i == 2: rank_display = "🥉"
+        
+        # Highlight für den eigenen Namen
+        bg_color = "#FFF0F3" if entry["Name"] == "Du" else "#ffffff"
+        border_color = "#E23D5B" if entry["Name"] == "Du" else "#eeeeee"
+
+        st.markdown(
+            f"""
+            <div style="background:{bg_color}; border: 1px solid {border_color}; 
+                        padding: 10px 15px; border-radius: 10px; margin-bottom: 8px;
+                        display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <span style="font-size: 18px; font-weight: bold; width: 30px;">{rank_display}</span>
+                    <div>
+                        <div style="font-weight: 600; font-size: 15px;">{entry['Name']}</div>
+                        <div style="font-size: 12px; color: gray;">Level {entry['Level']}</div>
+                    </div>
+                </div>
+                <div style="text-align: right;">
+                    <div style="font-weight: bold; color: #E23D5B;">{entry['Quests']} Quests</div>
+                    <div style="font-size: 11px; color: gray;">{entry['XP']} XP</div>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # ── Vollständige Liste ───────────────────────────────────────────────────
+    st.markdown("### 📋 Alle Teilnehmer")
+    for i, entry in enumerate(leaderboard):
+        is_me       = entry["name"] == "Du"
+        pct         = int(entry[sort_key] / max_val * 100) if max_val > 0 else 0
+        medal       = medals[i] if i < 3 else f"{i + 1}."
+        border_col  = "#E23D5B" if is_me else "#f0f0f0"
+        bg_col      = "#FFF5F7" if is_me else "#fff"
+
+        st.markdown(
+            f"""
+            <div style="border:1px solid {border_col};border-radius:10px;
+                        padding:12px 14px;margin-bottom:8px;background:{bg_col}">
+              <div style="display:flex;align-items:center;gap:12px">
+                <div style="font-size:16px;width:28px;text-align:center;flex-shrink:0">{medal}</div>
+                <div style="width:40px;height:40px;border-radius:50%;flex-shrink:0;
+                            background:{'#E23D5B' if is_me else '#FBEAF0'};
+                            color:{'white' if is_me else '#E23D5B'};
+                            display:flex;align-items:center;justify-content:center;
+                            font-size:13px;font-weight:600">{entry['initials']}</div>
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:14px;font-weight:500">
+                    {entry['name']}
+                    {'&nbsp;<span style="font-size:11px;background:#FBEAF0;color:#E23D5B;border-radius:99px;padding:2px 6px">Du</span>' if is_me else ''}
+                  </div>
+                  <div style="height:5px;background:#f0f0f0;border-radius:3px;margin-top:6px;overflow:hidden">
+                    <div style="height:100%;width:{pct}%;background:#E23D5B;border-radius:3px"></div>
+                  </div>
+                </div>
+                <div style="text-align:right;flex-shrink:0">
+                  <div style="font-size:14px;font-weight:500;color:#E23D5B">
+                    {entry[sort_key]} {lb_labels[sort_key]}
+                  </div>
+                  <div style="font-size:11px;color:gray;margin-top:2px">
+                    {entry['quests']} Quests · {entry['xp']} XP
+                  </div>
+                </div>
+              </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+
 def explore_quest():
-    st.markdown("## 👥 Explore Quests")
+    st.markdown("## 🌍 Explore Quests")
+
+    EXPLORE_QUESTS = [
+        {
+            "id": "eq1",
+            "name": "30 Tage Morgenroutine",
+            "schwierigkeit": "Mittel",
+            "ort": "für zu Hause",
+            "days_total": 30,
+            "beschreibung": "Stehe jeden Tag zur gleichen Zeit auf und starte mit einer festen Morgenroutine in den Tag – ob Meditation, Sport oder Journaling.",
+            "teilnehmer": 1243,
+            "emoji": "🌅",
+        },
+        {
+            "id": "eq2",
+            "name": "30 Tage Gym",
+            "schwierigkeit": "Schwer",
+            "ort": "im Fitnessstudio",
+            "days_total": 30,
+            "beschreibung": "Gehe 30 Tage in Folge ins Fitnessstudio. Kein Tag wird ausgelassen – Konsequenz ist der Schlüssel zum Erfolg.",
+            "teilnehmer": 876,
+            "emoji": "🏋️",
+        },
+        {
+            "id": "eq3",
+            "name": "7 Tage Digital Detox",
+            "schwierigkeit": "Sehr Schwer",
+            "ort": "für zu Hause",
+            "days_total": 7,
+            "beschreibung": "Verzichte eine Woche lang auf Social Media und nicht notwendige Bildschirmzeit. Entdecke, was du mit der gewonnenen Zeit anfängst.",
+            "teilnehmer": 512,
+            "emoji": "📵",
+        },
+        {
+            "id": "eq4",
+            "name": "14 Tage täglich lesen",
+            "schwierigkeit": "Einfach",
+            "ort": "für zu Hause",
+            "days_total": 14,
+            "beschreibung": "Lies jeden Tag mindestens 20 Minuten in einem Buch deiner Wahl. Bildung und Entspannung in einem.",
+            "teilnehmer": 2041,
+            "emoji": "📖",
+        },
+        {
+            "id": "eq5",
+            "name": "21 Tage Laufen",
+            "schwierigkeit": "Mittel",
+            "ort": "im Freien",
+            "days_total": 21,
+            "beschreibung": "Laufe 21 Tage lang mindestens 20 Minuten am Stück. Egal ob Regen oder Sonnenschein – du ziehst es durch!",
+            "teilnehmer": 694,
+            "emoji": "🏃",
+        },
+        {
+            "id": "eq6",
+            "name": "30 Tage gesund ernähren",
+            "schwierigkeit": "Schwer",
+            "ort": "für zu Hause",
+            "days_total": 30,
+            "beschreibung": "Koche jeden Tag selbst und verzichte auf Fast Food, Zucker und verarbeitete Lebensmittel. Dein Körper wird es dir danken.",
+            "teilnehmer": 1105,
+            "emoji": "🥗",
+        },
+    ]
+
+    if "explore_index" not in st.session_state:
+        st.session_state.explore_index = 0
+    if "explore_accepted" not in st.session_state:
+        st.session_state.explore_accepted = []
+    if "explore_rejected" not in st.session_state:
+        st.session_state.explore_rejected = []
+
+    idx = st.session_state.explore_index
+    seen = st.session_state.explore_accepted + st.session_state.explore_rejected
+    remaining = [q for q in EXPLORE_QUESTS if q["id"] not in seen]
+
+    if not remaining:
+        st.markdown(
+            """
+            <div style="text-align:center;padding:3rem 1rem">
+              <div style="font-size:48px;margin-bottom:1rem">🎉</div>
+              <div style="font-size:20px;font-weight:600;margin-bottom:0.5rem">Alle Quests gesehen!</div>
+              <div style="font-size:14px;color:gray;margin-bottom:1.5rem">
+                Du hast alle verfügbaren Quests durchgesehen.
+              </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        if st.session_state.explore_accepted:
+            st.markdown("### ✅ Angenommene Quests")
+            for qid in st.session_state.explore_accepted:
+                match = next((q for q in EXPLORE_QUESTS if q["id"] == qid), None)
+                if match:
+                    st.success(f"{match['emoji']} **{match['name']}** – {match['schwierigkeit']}")
+        if st.button("🔄 Neu starten", type="primary"):
+            st.session_state.explore_accepted = []
+            st.session_state.explore_rejected = []
+            st.rerun()
+        return
+
+    quest = remaining[0]
+    schwierigkeit = quest["schwierigkeit"]
+    badge_style = BADGE_STYLES.get(schwierigkeit, "background:#f0f0f0;color:#555")
+    ort_icon = LOCATION_ICONS.get(quest["ort"], "📍")
+    xp_day = XP_PER_DAY.get(schwierigkeit, 5)
+    xp_bonus = XP_COMPLETION_BONUS.get(schwierigkeit, 20)
+    total_xp = quest["days_total"] * xp_day + xp_bonus
+
+    total_seen = len(seen)
+    total_quests = len(EXPLORE_QUESTS)
+    st.markdown(
+        f"<div style='text-align:center;font-size:12px;color:gray;margin-bottom:0.5rem'>"
+        f"Quest {total_seen + 1} von {total_quests}</div>",
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        f"""
+        <div style="background:#fff;border:1px solid #f0f0f0;border-radius:20px;
+                    padding:2rem 1.6rem;box-shadow:0 8px 32px rgba(0,0,0,0.10);
+                    max-width:480px;margin:0 auto 1.5rem">
+
+          <div style="text-align:center;margin-bottom:1.2rem">
+            <div style="font-size:56px;margin-bottom:0.5rem">{quest['emoji']}</div>
+            <div style="font-size:21px;font-weight:700;letter-spacing:-0.3px;margin-bottom:0.4rem">
+              {quest['name']}
+            </div>
+            <span style="font-size:12px;padding:3px 10px;border-radius:99px;{badge_style}">
+              {schwierigkeit}
+            </span>
+          </div>
+
+          <div style="font-size:14px;color:#444;line-height:1.65;
+                      background:#fafafa;border-radius:10px;padding:12px 14px;
+                      margin-bottom:1.2rem">
+            {quest['beschreibung']}
+          </div>
+
+          <div style="display:flex;justify-content:space-around;text-align:center;
+                      margin-bottom:1.2rem">
+            <div>
+              <div style="font-size:18px;font-weight:600;color:#E23D5B">{quest['days_total']}</div>
+              <div style="font-size:11px;color:gray">Tage</div>
+            </div>
+            <div style="width:1px;background:#f0f0f0"></div>
+            <div>
+              <div style="font-size:18px;font-weight:600;color:#E23D5B">+{total_xp}</div>
+              <div style="font-size:11px;color:gray">Max XP</div>
+            </div>
+            <div style="width:1px;background:#f0f0f0"></div>
+            <div>
+              <div style="font-size:18px;font-weight:600;color:#E23D5B">{quest['teilnehmer']:,}</div>
+              <div style="font-size:11px;color:gray">Teilnehmer</div>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center">
+            <span style="font-size:12px;background:#f5f5f5;border-radius:99px;
+                         padding:4px 12px;color:#555">
+              {ort_icon} {quest['ort']}
+            </span>
+            <span style="font-size:12px;background:#FFF0F3;border-radius:99px;
+                         padding:4px 12px;color:#E23D5B">
+              +{xp_day} XP/Tag
+            </span>
+            <span style="font-size:12px;background:#EAF3DE;border-radius:99px;
+                         padding:4px 12px;color:#3B6D11">
+              +{xp_bonus} XP Bonus
+            </span>
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    col_reject, col_spacer, col_accept = st.columns([0.38, 0.24, 0.38])
+
+    with col_reject:
+        if st.button("❌ Ablehnen", use_container_width=True, key="explore_reject"):
+            st.session_state.explore_rejected.append(quest["id"])
+            st.rerun()
+
+    with col_accept:
+        if st.button("✅ Annehmen", use_container_width=True, key="explore_accept", type="primary"):
+            st.session_state.explore_accepted.append(quest["id"])
+            new_quest = {
+                "name": quest["name"],
+                "start": date.today(),
+                "end": date.today() + timedelta(days=quest["days_total"]),
+                "ort": quest["ort"],
+                "schwierigkeit": quest["schwierigkeit"],
+                "beschreibung": quest["beschreibung"],
+                "days_total": quest["days_total"],
+            }
+            st.session_state.quests.append(new_quest)
+            st.session_state.active_quest = new_quest
+            st.success(f"Quest **{quest['name']}** wurde angenommen und ist jetzt aktiv! 🎉")
+            st.rerun()
+
+    st.markdown(
+        "<div style='text-align:center;font-size:11px;color:#bbb;margin-top:0.5rem'>"
+        "❌ Ablehnen &nbsp;·&nbsp; ✅ Annehmen</div>",
+        unsafe_allow_html=True,
+    )
+
+    if st.session_state.explore_accepted:
+        st.markdown("<br>", unsafe_allow_html=True)
+        with st.expander(f"✅ Angenommene Quests ({len(st.session_state.explore_accepted)})"):
+            for qid in st.session_state.explore_accepted:
+                match = next((q for q in EXPLORE_QUESTS if q["id"] == qid), None)
+                if match:
+                    st.markdown(
+                        f"{match['emoji']} **{match['name']}** &nbsp;"
+                        f"<span style='font-size:11px;color:gray'>{match['schwierigkeit']} · "
+                        f"{match['days_total']} Tage</span>",
+                        unsafe_allow_html=True,
+                    )
 
 # ── Sidebar Navigation ───────────────────────────────────────────────────────
 
 st.sidebar.title("🍓 Questify")
 st.sidebar.divider()
 
-if st.sidebar.button("🏠 Feed", use_container_width=True):
+
+if st.sidebar.button("👤 Account erstellen", use_container_width=True):
+    st.session_state.page = "account"
+
+if st.sidebar.button("📤 Fortschritt teilen", use_container_width=True):
     st.session_state.page = "feed"
 
 if st.sidebar.button("✨ For You", use_container_width=True):
@@ -859,10 +1229,10 @@ if st.sidebar.button("⚔️ Quest erstellen", use_container_width=True):
 if st.sidebar.button("🏆 Mein Level", use_container_width=True):
     st.session_state.page = "level"
 
-if st.sidebar.button("👤 Account erstellen", use_container_width=True):
-    st.session_state.page = "account"
+if st.sidebar.button("🥇 Rangliste", use_container_width=True):
+    st.session_state.page = "rangliste"
 
-if st.sidebar.button("⚔️ Exploring Quests", use_container_width=True):
+if st.sidebar.button("🌍 Exploring Quests", use_container_width=True):
     st.session_state.page = "explore"
 
 # Kompaktes Level-Widget in der Sidebar
@@ -900,15 +1270,17 @@ if st.session_state.active_quest:
 
 st.title("🍓 Questify")
 
-if st.session_state.page == "feed":
-    page_feed()
+if st.session_state.page == "account":
+    page_account()
 elif st.session_state.page == "for_you":
     page_for_you()
 elif st.session_state.page == "quest":
     page_quest_erstellen()
 elif st.session_state.page == "level":
     page_level()
-elif st.session_state.page == "account":
-    page_account()
+elif st.session_state.page == "rangliste":
+    page_rangliste()
+elif st.session_state.page == "feed":
+    page_feed()
 elif st.session_state.page == "explore":
     explore_quest()
