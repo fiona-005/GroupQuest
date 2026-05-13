@@ -777,6 +777,8 @@ def page_level():
             """
         )
 
+def explore_quest():
+    st.markdown("## 👥 Explore Quests")
 
 # ── Sidebar Navigation ───────────────────────────────────────────────────────
 
@@ -797,6 +799,9 @@ if st.sidebar.button("🏆 Mein Level", use_container_width=True):
 
 if st.sidebar.button("👤 Account erstellen", use_container_width=True):
     st.session_state.page = "account"
+
+if st.sidebar.button("⚔️ Exploring Quests", use_container_width=True):
+    st.session_state.page = "explore"
 
 # Kompaktes Level-Widget in der Sidebar
 info = get_level_info(st.session_state.xp)
@@ -843,3 +848,5 @@ elif st.session_state.page == "level":
     page_level()
 elif st.session_state.page == "account":
     page_account()
+elif st.session_state.page == "explore":
+    explore_quest()
