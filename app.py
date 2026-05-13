@@ -1116,6 +1116,10 @@ def page_rangliste():
         medal      = medals[i] if i < 3 else f"{i + 1}."
         border_col = "#E23D5B" if is_me else "#f0f0f0"
         bg_col     = "#FFF5F7" if is_me else "#fff"
+        avatar_bg  = "#E23D5B" if is_me else "#FBEAF0"
+        avatar_col = "white"   if is_me else "#E23D5B"
+        du_badge   = '<span style="font-size:11px;background:#FBEAF0;color:#E23D5B;border-radius:99px;padding:2px 6px">&nbsp;Du</span>' if is_me else ""
+
         st.markdown(
             f"""
             <div style="border:1px solid {border_col};border-radius:10px;
@@ -1123,14 +1127,11 @@ def page_rangliste():
               <div style="display:flex;align-items:center;gap:12px">
                 <div style="font-size:16px;width:28px;text-align:center;flex-shrink:0">{medal}</div>
                 <div style="width:40px;height:40px;border-radius:50%;flex-shrink:0;
-                            background:{'#E23D5B' if is_me else '#FBEAF0'};
-                            color:{'white' if is_me else '#E23D5B'};
+                            background:{avatar_bg};color:{avatar_col};
                             display:flex;align-items:center;justify-content:center;
                             font-size:13px;font-weight:600">{entry['initials']}</div>
                 <div style="flex:1;min-width:0">
-                  <div style="font-size:14px;font-weight:500">{entry['name']}
-                    {'&nbsp;<span style="font-size:11px;background:#FBEAF0;color:#E23D5B;border-radius:99px;padding:2px 6px">Du</span>' if is_me else ''}
-                  </div>
+                  <div style="font-size:14px;font-weight:500">{entry['name']} {du_badge}</div>
                   <div style="height:5px;background:#f0f0f0;border-radius:3px;margin-top:6px;overflow:hidden">
                     <div style="height:100%;width:{pct}%;background:#E23D5B;border-radius:3px"></div>
                   </div>
@@ -1143,7 +1144,6 @@ def page_rangliste():
             </div>
             """, unsafe_allow_html=True,
         )
-
 
 def explore_quest():
     st.markdown("## 🌍 Explore Quests")
@@ -1289,7 +1289,7 @@ nav_items = [
     ("✨ For You",           "for_you"),
     ("⚔️ Quest erstellen",  "quest"),
     ("🏆 Mein Level",       "level"),
-    #("🥇 Rangliste",        "rangliste"),
+    ("🥇 Rangliste",        "rangliste"),
     ("🌍 Exploring Quests", "explore"),
     ("📦 Quest-Archiv",     "archiv"),
 ]
