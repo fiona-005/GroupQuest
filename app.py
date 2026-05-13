@@ -203,8 +203,11 @@ if "active_quest" not in st.session_state:
 if "quests" not in st.session_state:
     st.session_state.quests = []
 
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+
 if "page" not in st.session_state:
-    st.session_state.page = "feed"
+    st.session_state.page = "account"
 
 if "comment_inputs" not in st.session_state:
     st.session_state.comment_inputs = {}
@@ -212,8 +215,22 @@ if "comment_inputs" not in st.session_state:
 if "xp" not in st.session_state:
     st.session_state.xp = 0
 
-if "fy_filter" not in st.session_state:
-    st.session_state.fy_filter = "Alle"
+if "friends" not in st.session_state:
+    st.session_state.friends = []  # Liste von Freunde-Dicts
+
+# ── Demo-Nutzerdatenbank (simuliert andere User) ──────────────────────────────
+ALL_USERS = [
+    {"name": "Lena M.",  "initials": "LM", "level": 5,  "quest": "Morgenroutine"},
+    {"name": "Marco K.", "initials": "MK", "level": 8,  "quest": "30 Tage Fitness"},
+    {"name": "Jana T.",  "initials": "JT", "level": 3,  "quest": "Täglich lesen"},
+    {"name": "Tom B.",   "initials": "TB", "level": 11, "quest": "Meditation"},
+    {"name": "Sara L.",  "initials": "SL", "level": 2,  "quest": "Joggen"},
+    {"name": "Felix W.", "initials": "FW", "level": 7,  "quest": "Kalt duschen"},
+    {"name": "Mia H.",   "initials": "MH", "level": 4,  "quest": "Tagebuch"},
+    {"name": "Leon S.",  "initials": "LS", "level": 9,  "quest": "Vokabeln lernen"},
+    {"name": "Anna R.",  "initials": "AR", "level": 6,  "quest": "Yoga"},
+    {"name": "Noah P.",  "initials": "NP", "level": 1,  "quest": "Spazieren gehen"},
+]
 
 # ── Hilfsfunktionen ──────────────────────────────────────────────────────────
 
@@ -265,8 +282,14 @@ def page_account():
             st.error("Bitte AGB akzeptieren!")
         elif not email:
             st.error("E-Mail fehlt!")
+        elif not vorname.strip():
+            st.error("Bitte einen Vornamen eingeben.")
         else:
-            st.success(f"Danke, {vorname}! Dein Profil wurde erstellt.")
+            st.session_state.logged_in = True
+            st.session_state.user_name = vorname.strip()
+            st.session_state.user_initials = (vorname[0] + (nachname[0] if nachname else "")).upper()
+            st.session_state.page = "feed"
+            st.rerun()
 
 
 def page_quest_erstellen():
@@ -778,62 +801,174 @@ def page_level():
         )
 
 
+def page_freunde():
+    st.markdown("## 👥 Meine Freunde")
+
+    # ── Suchleiste ───────────────────────────────────────────────────────────
+    st.markdown("### 🔍 Freunde suchen")
+    suche = st.text_input(
+        "Name eingeben...",
+        placeholder="z. B. Lena M.",
+        label_visibility="collapsed",
+    )
+
+    friend_names = [f["name"] for f in st.session_state.friends]
+
+    if suche.strip():
+        treffer = [
+            u for u in ALL_USERS
+            if suche.lower() in u["name"].lower()
+        ]
+        if treffer:
+            for u in treffer:
+                bereits = u["name"] in friend_names
+                col_av, col_info, col_btn = st.columns([0.1, 0.65, 0.25])
+                with col_av:
+                    st.markdown(
+                        f"<div style='width:38px;height:38px;border-radius:50%;"
+                        f"background:#FBEAF0;color:#E23D5B;display:flex;align-items:center;"
+                        f"justify-content:center;font-size:12px;font-weight:500'>"
+                        f"{u['initials']}</div>",
+                        unsafe_allow_html=True,
+                    )
+                with col_info:
+                    st.markdown(
+                        f"**{u['name']}** &nbsp;"
+                        f"<span style='font-size:12px;color:gray'>Lv. {u['level']} · {u['quest']}</span>",
+                        unsafe_allow_html=True,
+                    )
+                with col_btn:
+                    if bereits:
+                        st.button("✓ Gefolgt", key=f"search_follow_{u['name']}", disabled=True)
+                    else:
+                        if st.button("➕ Folgen", key=f"search_follow_{u['name']}", type="primary"):
+                            st.session_state.friends.append(u)
+                            st.rerun()
+        else:
+            st.caption("Keine Nutzer gefunden.")
+
+    st.divider()
+
+    # ── Freundesliste ────────────────────────────────────────────────────────
+    st.markdown(f"### 👫 Meine Freunde ({len(st.session_state.friends)})")
+
+    if not st.session_state.friends:
+        st.info("Du folgst noch niemandem. Suche oben nach Freunden!")
+    else:
+        for u in st.session_state.friends:
+            col_av, col_info, col_btn = st.columns([0.1, 0.65, 0.25])
+            with col_av:
+                st.markdown(
+                    f"<div style='width:38px;height:38px;border-radius:50%;"
+                    f"background:#FBEAF0;color:#E23D5B;display:flex;align-items:center;"
+                    f"justify-content:center;font-size:12px;font-weight:500'>"
+                    f"{u['initials']}</div>",
+                    unsafe_allow_html=True,
+                )
+            with col_info:
+                st.markdown(
+                    f"**{u['name']}** &nbsp;"
+                    f"<span style='font-size:12px;color:gray'>Lv. {u['level']} · {u['quest']}</span>",
+                    unsafe_allow_html=True,
+                )
+            with col_btn:
+                if st.button("Entfernen", key=f"unfollow_{u['name']}"):
+                    st.session_state.friends = [
+                        f for f in st.session_state.friends if f["name"] != u["name"]
+                    ]
+                    st.rerun()
+
+def explore_quest():
+    st.markdown("## 👥 Explore Quests")
+
 # ── Sidebar Navigation ───────────────────────────────────────────────────────
 
 st.sidebar.title("🍓 Questify")
 st.sidebar.divider()
 
-if st.sidebar.button("🏠 Feed", use_container_width=True):
-    st.session_state.page = "feed"
+if not st.session_state.logged_in:
+    # Vor dem Login: nur Account erstellen anzeigen
+    st.sidebar.button("👤 Account erstellen", use_container_width=True, disabled=True)
+else:
+    # Nach dem Login: alle Seiten
+    if st.sidebar.button("🏠 Feed", use_container_width=True):
+        st.session_state.page = "feed"
 
-if st.sidebar.button("✨ For You", use_container_width=True):
+    if st.sidebar.button("✨ For You", use_container_width=True):
     st.session_state.page = "for_you"
 
 if st.sidebar.button("⚔️ Quest erstellen", use_container_width=True):
-    st.session_state.page = "quest"
+        st.session_state.page = "quest"
 
-if st.sidebar.button("🏆 Mein Level", use_container_width=True):
-    st.session_state.page = "level"
+    if st.sidebar.button("🏆 Mein Level", use_container_width=True):
+        st.session_state.page = "level"
 
-if st.sidebar.button("👤 Account erstellen", use_container_width=True):
-    st.session_state.page = "account"
+    if st.sidebar.button("👥 Meine Freunde", use_container_width=True):
+        st.session_state.page = "freunde"
+    
+    if st.sidebar.button("⚔️ Exploring Quests", use_container_width=True):
+        st.session_state.page = "explore"
 
-# Kompaktes Level-Widget in der Sidebar
-info = get_level_info(st.session_state.xp)
-pct  = int(info["progress"] * 100)
-st.sidebar.divider()
-st.sidebar.markdown(
-    f"""
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-      <div style="width:32px;height:32px;border-radius:50%;background:#FBEAF0;
-                  color:#E23D5B;display:flex;align-items:center;justify-content:center;
-                  font-size:13px;font-weight:500;flex-shrink:0">{info['level']}</div>
-      <div>
-        <div style="font-size:13px;font-weight:500">
-          Lv. {info['level']} – {info['title']}
-        </div>
-        <div style="font-size:11px;color:gray">{st.session_state.xp} XP gesamt</div>
-      </div>
-    </div>
-    <div style="height:6px;background:#f0f0f0;border-radius:3px;overflow:hidden">
-      <div style="height:100%;width:{pct}%;background:#E23D5B;border-radius:3px"></div>
-    </div>
-    <div style="font-size:10px;color:gray;margin-top:3px;text-align:right">
-      {info['xp_to_next']} XP bis Level {info['level'] + 1}
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
-
-if st.session_state.active_quest:
+    # Kompaktes Level-Widget in der Sidebar
+    info = get_level_info(st.session_state.xp)
+    pct  = int(info["progress"] * 100)
     st.sidebar.divider()
-    st.sidebar.markdown(f"**Aktive Quest:**  \n{st.session_state.active_quest['name']}")
+    st.sidebar.markdown(
+        f"""
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+          <div style="width:32px;height:32px;border-radius:50%;background:#FBEAF0;
+                      color:#E23D5B;display:flex;align-items:center;justify-content:center;
+                      font-size:13px;font-weight:500;flex-shrink:0">{info['level']}</div>
+          <div>
+            <div style="font-size:13px;font-weight:500">
+              Lv. {info['level']} – {info['title']}
+            </div>
+            <div style="font-size:11px;color:gray">{st.session_state.xp} XP gesamt</div>
+          </div>
+        </div>
+        <div style="height:6px;background:#f0f0f0;border-radius:3px;overflow:hidden">
+          <div style="height:100%;width:{pct}%;background:#E23D5B;border-radius:3px"></div>
+        </div>
+        <div style="font-size:10px;color:gray;margin-top:3px;text-align:right">
+          {info['xp_to_next']} XP bis Level {info['level'] + 1}
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    if st.session_state.active_quest:
+        st.sidebar.divider()
+        st.sidebar.markdown(f"**Aktive Quest:**  \n{st.session_state.active_quest['name']}")
+
+    # Freunde-Mini-Liste in der Sidebar
+    if st.session_state.friends:
+        st.sidebar.divider()
+        st.sidebar.markdown(
+            f"<div style='font-size:12px;font-weight:500;color:gray;margin-bottom:6px'>"
+            f"👥 Freunde ({len(st.session_state.friends)})</div>",
+            unsafe_allow_html=True,
+        )
+        for f in st.session_state.friends[:5]:
+            st.sidebar.markdown(
+                f"<div style='display:flex;align-items:center;gap:8px;margin-bottom:6px'>"
+                f"<div style='width:26px;height:26px;border-radius:50%;background:#FBEAF0;"
+                f"color:#E23D5B;display:flex;align-items:center;justify-content:center;"
+                f"font-size:10px;font-weight:500;flex-shrink:0'>{f['initials']}</div>"
+                f"<div style='font-size:12px'>{f['name']}"
+                f"<span style='color:gray;font-size:11px'> · Lv.{f['level']}</span></div>"
+                f"</div>",
+                unsafe_allow_html=True,
+            )
+        if len(st.session_state.friends) > 5:
+            st.sidebar.caption(f"+ {len(st.session_state.friends) - 5} weitere")
 
 # ── Router ───────────────────────────────────────────────────────────────────
 
 st.title("🍓 Questify")
 
-if st.session_state.page == "feed":
+if not st.session_state.logged_in:
+    page_account()
+elif st.session_state.page == "feed":
     page_feed()
 elif st.session_state.page == "for_you":
     page_for_you()
@@ -841,5 +976,9 @@ elif st.session_state.page == "quest":
     page_quest_erstellen()
 elif st.session_state.page == "level":
     page_level()
+elif st.session_state.page == "freunde":
+    page_freunde()
 elif st.session_state.page == "account":
     page_account()
+elif st.session_state.page == "explore":
+    explore_quest()
