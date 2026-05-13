@@ -445,6 +445,107 @@ def page_account():
         user = db_load_user(st.session_state.user_email)
         if user:
             st.success(f"Eingeloggt als **{user['vorname']} {user['nachname']}** ({user['email']})")
+            st.markdown("## 🏆 Mein Level")
+            info = get_level_info(st.session_state.xp)
+            pct  = int(info["progress"] * 100)
+
+            st.markdown(
+                f"""
+                <div style="background:#fff;border:0.5px solid #e0e0e0;border-radius:12px;padding:1.2rem;margin-bottom:1rem">
+                <div style="display:flex;align-items:center;gap:14px;margin-bottom:1rem">
+                    <div style="width:56px;height:56px;border-radius:50%;background:#FBEAF0;
+                                color:#E23D5B;display:flex;align-items:center;justify-content:center;
+                                font-size:24px;font-weight:500;flex-shrink:0">{info['level']}</div>
+                    <div>
+                    <div style="font-size:17px;font-weight:500">Level {info['level']} – {info['title']}</div>
+                    <div style="font-size:13px;color:gray">{st.session_state.xp} XP gesamt</div>
+                    </div>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:12px;color:gray;margin-bottom:5px">
+                    <span>{info['xp_in_level']} / {info['xp_needed']} XP in diesem Level</span>
+                    <span>{info['xp_to_next']} XP bis Level {info['level'] + 1}</span>
+                </div>
+                <div style="height:14px;background:#f0f0f0;border-radius:7px;overflow:hidden">
+                    <div style="height:100%;width:{pct}%;background:#E23D5B;border-radius:7px"></div>
+                </div>
+                <div style="font-size:11px;color:gray;margin-top:4px;text-align:right">{pct}%</div>
+                </div>
+                """, unsafe_allow_html=True,
+            )
+
+            col1, col2, col3 = st.columns(3)
+            quests = st.session_state.get("quests", [])
+            streak = st.session_state.get("streak", 0)
+            if streak == 0:
+                flame_display, flame_label, flame_color = "—", "Kein Streak", "#aaa"
+            elif streak < 3:
+                flame_display, flame_label, flame_color = "🔥" * streak, f"{streak} Tag{'e' if streak > 1 else ''}", "#E07B39"
+            elif streak < 7:
+                flame_display, flame_label, flame_color = "🔥" * min(streak, 5), f"{streak} Tage 🏃", "#E05A1A"
+            elif streak < 14:
+                flame_display, flame_label, flame_color = "🔥🔥🔥🔥🔥", f"{streak} Tage 💪", "#C93E00"
+            else:
+                flame_display, flame_label, flame_color = "🔥🔥🔥🔥🔥", f"{streak} Tage 👑", "#A52D00"
+
+            col1.metric("Gesamt-XP", st.session_state.xp)
+            col2.metric("Quests",    len(quests))
+            with col3:
+                st.markdown(
+                    f"""
+                    <div style="background:#fff;border:0.5px solid #e0e0e0;border-radius:8px;padding:10px 14px;text-align:center">
+                    <div style="font-size:10px;color:gray;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Streak</div>
+                    <div style="font-size:20px;line-height:1.2">{flame_display}</div>
+                    <div style="font-size:13px;font-weight:600;color:{flame_color};margin-top:3px">{flame_label}</div>
+                    </div>
+                    """, unsafe_allow_html=True,
+                )
+
+            st.markdown("### 📋 Aktive Quests")
+            if not quests:
+                st.info("Noch keine Quests erstellt.")
+            else:
+                for q in quests:
+                    schwierigkeit = q.get("schwierigkeit") or "Einfach"
+                    ort           = q.get("ort") or "sonstiges"
+                    icon          = LOCATION_ICONS.get(ort, "📍")
+                    xp_day        = XP_PER_DAY.get(schwierigkeit, 5)
+                    days_total    = max(q.get("days_total", 1), 1)
+                    days_done     = (date.today() - q["start"]).days + 1
+                    days_done     = max(0, min(days_done, days_total))
+                    progress_q    = int(days_done / days_total * 100)
+                    xp_earned     = days_done * xp_day
+                    badge_style   = BADGE_STYLES.get(schwierigkeit, "background:#f0f0f0;color:#555")
+                    st.markdown(
+                        f"""
+                        <div style="background:#fff;border:0.5px solid #e0e0e0;border-radius:10px;padding:12px 14px;margin-bottom:10px">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+                            <span style="font-size:14px;font-weight:500">{icon} {q['name']}</span>
+                            <span style="font-size:11px;padding:2px 8px;border-radius:99px;{badge_style}">{schwierigkeit}</span>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:10px;">
+                            <div style="flex:1;height:6px;background:#f0f0f0;border-radius:3px;overflow:hidden">
+                            <div style="height:100%;width:{progress_q}%;background:#E23D5B;border-radius:3px"></div>
+                            </div>
+                            <span style="font-size:12px;color:gray;white-space:nowrap">{days_done} / {days_total} · {ort}</span>
+                        </div>
+                        <div style="font-size:11px;color:gray;margin-top:5px">
+                            +{xp_day} XP/Tag · {xp_earned} XP bisher · Abschluss-Bonus: +{XP_COMPLETION_BONUS.get(schwierigkeit, 20)} XP
+                        </div>
+                        </div>
+                        """, unsafe_allow_html=True,
+                    )
+
+            with st.expander("ℹ️ Wie werden XP berechnet?"):
+                st.markdown("""
+                    | Schwierigkeit | XP pro Tag | Abschluss-Bonus |
+                    |---|---|---|
+                    | Einfach | +5 | +20 |
+                    | Mittel | +15 | +50 |
+                    | Schwer | +25 | +100 |
+                    | Sehr Schwer | +40 | +200 |
+
+                    **Level-Formel:** `XP für Level N = int(100 × N^1.6)`
+                """)
         if st.button("🚪 Abmelden", type="secondary"):
             st.session_state.user_email   = None
             st.session_state.quests       = []
