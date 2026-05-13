@@ -215,6 +215,11 @@ if "xp" not in st.session_state:
 if "fy_filter" not in st.session_state:
     st.session_state.fy_filter = "Alle"
 
+# ── NEU: Täglicher Check-in Status ───────────────────────────────────────────
+# Speichert das Datum des letzten Check-ins pro Quest, um Doppelklicks zu verhindern
+if "daily_checkin" not in st.session_state:
+    st.session_state.daily_checkin = {}  # quest_name -> date string
+
 # ── Hilfsfunktionen ──────────────────────────────────────────────────────────
 
 def img_to_base64(uploaded_file):
@@ -243,6 +248,18 @@ def add_comment(post_id, text, source="posts"):
         if p["id"] == post_id:
             p["comments"].append({"author": "Du", "text": text})
             break
+
+def is_checked_in_today(quest_name: str) -> bool:
+    """Gibt True zurück, wenn die Quest heute schon abgehakt wurde."""
+    today_str = date.today().isoformat()
+    return st.session_state.daily_checkin.get(quest_name) == today_str
+
+def do_daily_checkin(quest_name: str, schwierigkeit: str):
+    """Führt den täglichen Check-in durch und vergibt XP."""
+    today_str = date.today().isoformat()
+    st.session_state.daily_checkin[quest_name] = today_str
+    xp_amount = XP_PER_DAY.get(schwierigkeit, 5)
+    award_xp(xp_amount, reason=f"Tages-Check-in: {quest_name}")
 
 # ── Seiten ───────────────────────────────────────────────────────────────────
 
@@ -335,28 +352,73 @@ def page_feed():
         days_done = max(0, min(days_done, quest["days_total"]))
         progress = days_done / quest["days_total"] if quest["days_total"] > 0 else 0
 
-        st.markdown(
-            f"""
-            <div style="background: linear-gradient(135deg,#1a1a2e,#16213e);
-                        border-radius:12px;padding:1.2rem;color:white;margin-bottom:1.5rem;">
-              <div style="display:flex;justify-content:space-between;align-items:center">
-                <div>
-                  <div style="font-size:16px;font-weight:500">⚔️ {quest['name']}</div>
-                  <div style="font-size:12px;opacity:.7;margin-top:4px">
-                    Tag {days_done} von {quest['days_total']} · {quest.get('schwierigkeit','–')}
+        quest_name = quest["name"]
+        schwierigkeit = quest.get("schwierigkeit", "Einfach")
+        checked_today = is_checked_in_today(quest_name)
+
+        # ── Quest-Banner mit Check-in Button ────────────────────────────────
+        col_banner, col_check = st.columns([0.82, 0.18])
+
+        with col_banner:
+            st.markdown(
+                f"""
+                <div style="background: linear-gradient(135deg,#1a1a2e,#16213e);
+                            border-radius:12px;padding:1.2rem;color:white;">
+                  <div style="display:flex;justify-content:space-between;align-items:center">
+                    <div>
+                      <div style="font-size:16px;font-weight:500">⚔️ {quest_name}</div>
+                      <div style="font-size:12px;opacity:.7;margin-top:4px">
+                        Tag {days_done} von {quest['days_total']} · {schwierigkeit}
+                      </div>
+                    </div>
+                    <div style="background:#E23D5B;border-radius:20px;padding:4px 12px;font-size:12px;font-weight:500">
+                      Aktiv
+                    </div>
+                  </div>
+                  <div style="height:4px;background:rgba(255,255,255,.2);border-radius:2px;margin-top:12px">
+                    <div style="height:100%;width:{int(progress*100)}%;background:#E23D5B;border-radius:2px"></div>
                   </div>
                 </div>
-                <div style="background:#E23D5B;border-radius:20px;padding:4px 12px;font-size:12px;font-weight:500">
-                  Aktiv
-                </div>
-              </div>
-              <div style="height:4px;background:rgba(255,255,255,.2);border-radius:2px;margin-top:12px">
-                <div style="height:100%;width:{int(progress*100)}%;background:#E23D5B;border-radius:2px"></div>
-              </div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+                """,
+                unsafe_allow_html=True,
+            )
+
+        with col_check:
+            if checked_today:
+                # Bereits abgehakt – grüner Zustand
+                st.markdown(
+                    """
+                    <div style="display:flex;flex-direction:column;align-items:center;
+                                justify-content:center;height:100%;padding-top:4px">
+                      <div style="width:52px;height:52px;border-radius:50%;
+                                  background:#1a3a2a;border:2px solid #2ecc71;
+                                  display:flex;align-items:center;justify-content:center;
+                                  font-size:24px;margin:0 auto">✅</div>
+                      <div style="font-size:10px;color:#2ecc71;text-align:center;
+                                  margin-top:5px;font-weight:500">Erledigt!</div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+            else:
+                # Noch nicht abgehakt – klickbarer Button
+                st.markdown("<div style='padding-top:4px'>", unsafe_allow_html=True)
+                if st.button(
+                    "✔",
+                    key="daily_checkin_btn",
+                    help=f"Tag {days_done} als erledigt markieren (+{XP_PER_DAY.get(schwierigkeit, 5)} XP)",
+                    use_container_width=True,
+                ):
+                    do_daily_checkin(quest_name, schwierigkeit)
+                    st.rerun()
+                st.markdown(
+                    "<div style='font-size:10px;color:gray;text-align:center;margin-top:2px'>Heute abhaken</div>",
+                    unsafe_allow_html=True,
+                )
+                st.markdown("</div>", unsafe_allow_html=True)
+
+        st.markdown("<div style='margin-bottom:1rem'></div>", unsafe_allow_html=True)
+
     else:
         st.info("Du hast noch keine aktive Quest. Erstelle eine über die Sidebar!")
 
