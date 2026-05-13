@@ -193,7 +193,6 @@ if "posts" not in st.session_state:
     ]
 
 if "for_you_posts" not in st.session_state:
-    # Separate copies for For-You page
     st.session_state.for_you_posts = [
         {**p} for p in st.session_state.posts
     ]
@@ -216,10 +215,12 @@ if "xp" not in st.session_state:
 if "fy_filter" not in st.session_state:
     st.session_state.fy_filter = "Alle"
 
+if "lb_filter" not in st.session_state:
+    st.session_state.lb_filter = "Quests"
+
 # ── NEU: Täglicher Check-in Status ───────────────────────────────────────────
-# Speichert das Datum des letzten Check-ins pro Quest, um Doppelklicks zu verhindern
 if "daily_checkin" not in st.session_state:
-    st.session_state.daily_checkin = {}  # quest_name -> date string
+    st.session_state.daily_checkin = {}
 
 # ── Hilfsfunktionen ──────────────────────────────────────────────────────────
 
@@ -251,12 +252,10 @@ def add_comment(post_id, text, source="posts"):
             break
 
 def is_checked_in_today(quest_name: str) -> bool:
-    """Gibt True zurück, wenn die Quest heute schon abgehakt wurde."""
     today_str = date.today().isoformat()
     return st.session_state.daily_checkin.get(quest_name) == today_str
 
 def do_daily_checkin(quest_name: str, schwierigkeit: str):
-    """Führt den täglichen Check-in durch und vergibt XP."""
     today_str = date.today().isoformat()
     st.session_state.daily_checkin[quest_name] = today_str
     xp_amount = XP_PER_DAY.get(schwierigkeit, 5)
@@ -357,7 +356,6 @@ def page_feed():
         schwierigkeit = quest.get("schwierigkeit", "Einfach")
         checked_today = is_checked_in_today(quest_name)
 
-        # ── Quest-Banner mit Check-in Button ────────────────────────────────
         col_banner, col_check = st.columns([0.82, 0.18])
 
         with col_banner:
@@ -386,7 +384,6 @@ def page_feed():
 
         with col_check:
             if checked_today:
-                # Bereits abgehakt – grüner Zustand
                 st.markdown(
                     """
                     <div style="display:flex;flex-direction:column;align-items:center;
@@ -402,7 +399,6 @@ def page_feed():
                     unsafe_allow_html=True,
                 )
             else:
-                # Noch nicht abgehakt – klickbarer Button
                 st.markdown("<div style='padding-top:4px'>", unsafe_allow_html=True)
                 if st.button(
                     "✔",
@@ -423,7 +419,6 @@ def page_feed():
     else:
         st.info("Du hast noch keine aktive Quest. Erstelle eine über die Sidebar!")
 
-    # ── Fortschritt teilen ───────────────────────────────────────────────────
     st.markdown("### 📤 Fortschritt teilen")
     with st.form("post_form", clear_on_submit=True):
         post_text = st.text_area(
@@ -460,7 +455,6 @@ def page_feed():
             st.session_state.posts.insert(0, new_post)
             st.session_state.for_you_posts.insert(0, {**new_post})
 
-            # XP vergeben
             schwierigkeit = (
                 st.session_state.active_quest.get("schwierigkeit", "Einfach")
                 if st.session_state.active_quest
@@ -538,7 +532,6 @@ def page_feed():
 
 
 def page_for_you():
-    # ── Header ──────────────────────────────────────────────────────────────
     st.markdown(
         """
         <div style="background:linear-gradient(135deg,#E23D5B,#c0294a);
@@ -552,7 +545,6 @@ def page_for_you():
         unsafe_allow_html=True,
     )
 
-    # ── Freunde-Fortschritt oben ─────────────────────────────────────────────
     st.markdown("### 👥 Freunde – Tages-Fortschritt")
 
     friends_data = [
@@ -589,20 +581,12 @@ def page_for_you():
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # ── Filter-Tabs ──────────────────────────────────────────────────────────
     st.markdown("### 📋 Beiträge")
 
     col_f1, col_f2, col_f3 = st.columns(3)
     filters = ["Alle", "👥 Freunde", "🏆 Gleiche Challenge"]
     for col, label in zip([col_f1, col_f2, col_f3], filters):
         is_active = st.session_state.fy_filter == label
-        style = (
-            "background:#E23D5B;color:white;border:none;border-radius:20px;"
-            "padding:6px 14px;font-size:13px;font-weight:500;cursor:pointer;width:100%"
-            if is_active else
-            "background:#f5f5f5;color:#555;border:none;border-radius:20px;"
-            "padding:6px 14px;font-size:13px;cursor:pointer;width:100%"
-        )
         with col:
             if st.button(label, key=f"filter_{label}", use_container_width=True):
                 st.session_state.fy_filter = label
@@ -610,7 +594,6 @@ def page_for_you():
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # ── Posts filtern ────────────────────────────────────────────────────────
     active_filter = st.session_state.fy_filter
     posts = st.session_state.for_you_posts
 
@@ -623,7 +606,6 @@ def page_for_you():
         st.info("Keine Beiträge für diesen Filter.")
         return
 
-    # ── Post-Karten ──────────────────────────────────────────────────────────
     for post in posts:
         pid = post["id"]
         schwierigkeit = post.get("schwierigkeit", "Einfach")
@@ -633,7 +615,6 @@ def page_for_you():
         is_friend = post.get("is_friend", False)
         same_challenge = post.get("same_challenge", False)
 
-        # Badges vorbereiten
         tag_badges = ""
         if is_friend:
             tag_badges += "<span style='font-size:10px;background:#EEF6FF;color:#2563EB;border-radius:99px;padding:2px 7px;margin-right:4px'>👥 Freund</span>"
@@ -641,7 +622,6 @@ def page_for_you():
             tag_badges += "<span style='font-size:10px;background:#FFF0F3;color:#E23D5B;border-radius:99px;padding:2px 7px'>🏆 Gleiche Challenge</span>"
 
         with st.container(border=True):
-            # Header
             col_av, col_info = st.columns([0.1, 0.9])
             with col_av:
                 st.markdown(
@@ -659,7 +639,6 @@ def page_for_you():
                     unsafe_allow_html=True,
                 )
 
-            # Quest-Kontext-Banner
             st.markdown(
                 f"""
                 <div style="background:#fafafa;border-left:3px solid #E23D5B;border-radius:0 6px 6px 0;
@@ -679,7 +658,6 @@ def page_for_you():
                 unsafe_allow_html=True,
             )
 
-            # Fortschrittsbalken
             st.markdown(
                 f"""
                 <div style="height:4px;background:#f0f0f0;border-radius:2px;
@@ -695,7 +673,6 @@ def page_for_you():
 
             st.markdown(f"<div style='font-size:14px;line-height:1.5;margin-bottom:8px'>{post['text']}</div>", unsafe_allow_html=True)
 
-            # Like & Kommentar
             col_like, col_comment, _ = st.columns([0.22, 0.28, 0.5])
             with col_like:
                 heart = "❤️" if post["liked"] else "🤍"
@@ -711,7 +688,6 @@ def page_for_you():
                     st.session_state[show_key] = not st.session_state[show_key]
                     st.rerun()
 
-            # Kommentare
             if st.session_state.get(f"fy_show_comments_{pid}", False):
                 if post["comments"]:
                     for c in post["comments"]:
@@ -776,7 +752,6 @@ def page_level():
     quests = st.session_state.get("quests", [])
     streak = st.session_state.get("streak", 0)
 
-    # Flammen-Anzeige basierend auf Streak
     if streak == 0:
         flame_display = "—"
         flame_label   = "Kein Streak"
@@ -877,66 +852,134 @@ def page_level():
             """
         )
 
-    st.markdown("### 📋 Aktive Quests")
-    if not quests:
-        st.info("Noch keine Quests erstellt.")
-    else:
-        for q in quests:
-            schwierigkeit = q.get("schwierigkeit") or "Einfach"
-            ort           = q.get("ort") or "sonstiges"
-            icon          = LOCATION_ICONS.get(ort, "📍")
-            xp_day        = XP_PER_DAY.get(schwierigkeit, 5)
-            days_total    = max(q.get("days_total", 1), 1)
-            days_done     = (date.today() - q["start"]).days + 1
-            days_done     = max(0, min(days_done, days_total))
-            progress_q    = int(days_done / days_total * 100)
-            xp_earned     = days_done * xp_day
-            badge_style   = BADGE_STYLES.get(schwierigkeit, "background:#f0f0f0;color:#555")
 
+def page_rangliste():
+    st.markdown(
+        """
+        <div style="background:linear-gradient(135deg,#1a1a2e,#16213e);
+                    border-radius:14px;padding:1.2rem 1.6rem;color:white;margin-bottom:1.5rem">
+          <div style="font-size:22px;font-weight:700;letter-spacing:-0.3px">🏆 Rangliste</div>
+          <div style="font-size:13px;opacity:0.85;margin-top:4px">
+            Wer hat die meisten Quests abgeschlossen?
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # ── Filter-Tabs ──────────────────────────────────────────────────────────
+    col1, col2, col3 = st.columns(3)
+    for col, label in zip([col1, col2, col3], ["Quests", "XP", "🔥 Streak"]):
+        is_active = st.session_state.lb_filter == label
+        style = (
+            "background:#E23D5B;color:white;border:none;border-radius:20px;"
+            "padding:6px 14px;font-size:13px;font-weight:500;cursor:pointer;width:100%"
+            if is_active else
+            "background:#f5f5f5;color:#555;border:none;border-radius:20px;"
+            "padding:6px 14px;font-size:13px;cursor:pointer;width:100%"
+        )
+        with col:
+            if st.button(label, key=f"lb_{label}", use_container_width=True):
+                st.session_state.lb_filter = label
+                st.rerun()
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # ── Leaderboard-Daten ────────────────────────────────────────────────────
+    leaderboard = [
+        {"name": "Lena M.",   "initials": "LM", "quests": 8, "xp": 1240, "streak": 14},
+        {"name": "Marco K.",  "initials": "MK", "quests": 6, "xp": 980,  "streak": 12},
+        {"name": "Felix R.",  "initials": "FR", "quests": 5, "xp": 860,  "streak": 7 },
+        {"name": "Jana T.",   "initials": "JT", "quests": 4, "xp": 620,  "streak": 5 },
+        {"name": "Sophie W.", "initials": "SW", "quests": 3, "xp": 540,  "streak": 5 },
+        {
+            "name":    "Du",
+            "initials":"DU",
+            "quests":  len(st.session_state.quests),
+            "xp":      st.session_state.xp,
+            "streak":  1,
+        },
+    ]
+
+    sort_key  = {"Quests": "quests", "XP": "xp", "🔥 Streak": "streak"}[st.session_state.lb_filter]
+    lb_labels = {"quests": "Quests", "xp": "XP", "streak": "Tage"}
+    leaderboard.sort(key=lambda x: x[sort_key], reverse=True)
+
+    medals  = ["🥇", "🥈", "🥉"]
+    max_val = leaderboard[0][sort_key] if leaderboard else 1
+
+    # ── Podium Top 3 ─────────────────────────────────────────────────────────
+    st.markdown("### 🎖️ Top 3")
+    cols = st.columns(3)
+    podium_borders = ["#E23D5B", "#c9a227", "#8b7355"]
+    for i, entry in enumerate(leaderboard[:3]):
+        with cols[i]:
+            is_me  = entry["name"] == "Du"
+            border = podium_borders[i]
             st.markdown(
                 f"""
-                <div style="background:#fff;border:0.5px solid #e0e0e0;border-radius:10px;
-                            padding:12px 14px;margin-bottom:10px">
-                  <div style="display:flex;justify-content:space-between;align-items:center;
-                              margin-bottom:6px">
-                    <span style="font-size:14px;font-weight:500">{icon} {q['name']}</span>
-                    <span style="font-size:11px;padding:2px 8px;border-radius:99px;
-                                 {badge_style}">{schwierigkeit}</span>
-                  </div>
-                  <div style="display:flex;align-items:center;gap:10px;">
-                    <div style="flex:1;height:6px;background:#f0f0f0;border-radius:3px;overflow:hidden">
-                      <div style="height:100%;width:{progress_q}%;background:#E23D5B;
-                                  border-radius:3px"></div>
-                    </div>
-                    <span style="font-size:12px;color:gray;white-space:nowrap">
-                      {days_done} / {days_total} · {ort}
-                    </span>
-                  </div>
-                  <div style="font-size:11px;color:gray;margin-top:5px">
-                    +{xp_day} XP/Tag · {xp_earned} XP bisher ·
-                    Abschluss-Bonus: +{XP_COMPLETION_BONUS.get(schwierigkeit, 20)} XP
+                <div style="border:1.5px solid {border};border-radius:12px;
+                            padding:14px 10px;text-align:center;margin-bottom:8px">
+                  <div style="font-size:22px">{medals[i]}</div>
+                  <div style="width:44px;height:44px;border-radius:50%;
+                              background:{'#E23D5B' if is_me else '#FBEAF0'};
+                              color:{'white' if is_me else '#E23D5B'};
+                              display:flex;align-items:center;justify-content:center;
+                              font-size:14px;font-weight:600;margin:6px auto">{entry['initials']}</div>
+                  <div style="font-size:13px;font-weight:600">{entry['name']}</div>
+                  <div style="font-size:13px;color:#E23D5B;font-weight:500;margin-top:4px">
+                    {entry[sort_key]} {lb_labels[sort_key]}
                   </div>
                 </div>
                 """,
                 unsafe_allow_html=True,
             )
 
-    with st.expander("ℹ️ Wie werden XP berechnet?"):
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # ── Vollständige Liste ───────────────────────────────────────────────────
+    st.markdown("### 📋 Alle Teilnehmer")
+    for i, entry in enumerate(leaderboard):
+        is_me       = entry["name"] == "Du"
+        pct         = int(entry[sort_key] / max_val * 100) if max_val > 0 else 0
+        medal       = medals[i] if i < 3 else f"{i + 1}."
+        border_col  = "#E23D5B" if is_me else "#f0f0f0"
+        bg_col      = "#FFF5F7" if is_me else "#fff"
+
         st.markdown(
-            """
-            | Schwierigkeit | XP pro Tag | Abschluss-Bonus |
-            |---|---|---|
-            | Einfach | +5 | +20 |
-            | Mittel | +15 | +50 |
-            | Schwer | +25 | +100 |
-            | Sehr Schwer | +40 | +200 |
-
-            **Level-Formel:** `XP für Level N = int(100 × N^1.6)`  
-            → Level 2: 100 XP · Level 5: 760 XP · Level 10: 2 512 XP · Level 20: 8 103 XP
-
-            XP werden automatisch vergeben, wenn du im Feed einen Fortschritt postest.
-            """
+            f"""
+            <div style="border:1px solid {border_col};border-radius:10px;
+                        padding:12px 14px;margin-bottom:8px;background:{bg_col}">
+              <div style="display:flex;align-items:center;gap:12px">
+                <div style="font-size:16px;width:28px;text-align:center;flex-shrink:0">{medal}</div>
+                <div style="width:40px;height:40px;border-radius:50%;flex-shrink:0;
+                            background:{'#E23D5B' if is_me else '#FBEAF0'};
+                            color:{'white' if is_me else '#E23D5B'};
+                            display:flex;align-items:center;justify-content:center;
+                            font-size:13px;font-weight:600">{entry['initials']}</div>
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:14px;font-weight:500">
+                    {entry['name']}
+                    {'&nbsp;<span style="font-size:11px;background:#FBEAF0;color:#E23D5B;border-radius:99px;padding:2px 6px">Du</span>' if is_me else ''}
+                  </div>
+                  <div style="height:5px;background:#f0f0f0;border-radius:3px;margin-top:6px;overflow:hidden">
+                    <div style="height:100%;width:{pct}%;background:#E23D5B;border-radius:3px"></div>
+                  </div>
+                </div>
+                <div style="text-align:right;flex-shrink:0">
+                  <div style="font-size:14px;font-weight:500;color:#E23D5B">
+                    {entry[sort_key]} {lb_labels[sort_key]}
+                  </div>
+                  <div style="font-size:11px;color:gray;margin-top:2px">
+                    {entry['quests']} Quests · {entry['xp']} XP
+                  </div>
+                </div>
+              </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
         )
+
 
 def explore_quest():
     st.markdown("## 🌍 Explore Quests")
@@ -1004,7 +1047,6 @@ def explore_quest():
         },
     ]
 
-    # Session-State für den aktuellen Karten-Index und gesehene Quests
     if "explore_index" not in st.session_state:
         st.session_state.explore_index = 0
     if "explore_accepted" not in st.session_state:
@@ -1049,7 +1091,6 @@ def explore_quest():
     xp_bonus = XP_COMPLETION_BONUS.get(schwierigkeit, 20)
     total_xp = quest["days_total"] * xp_day + xp_bonus
 
-    # Fortschritts-Zähler
     total_seen = len(seen)
     total_quests = len(EXPLORE_QUESTS)
     st.markdown(
@@ -1058,14 +1099,12 @@ def explore_quest():
         unsafe_allow_html=True,
     )
 
-    # ── Quest-Karte ──────────────────────────────────────────────────────────
     st.markdown(
         f"""
         <div style="background:#fff;border:1px solid #f0f0f0;border-radius:20px;
                     padding:2rem 1.6rem;box-shadow:0 8px 32px rgba(0,0,0,0.10);
                     max-width:480px;margin:0 auto 1.5rem">
 
-          <!-- Emoji & Titel -->
           <div style="text-align:center;margin-bottom:1.2rem">
             <div style="font-size:56px;margin-bottom:0.5rem">{quest['emoji']}</div>
             <div style="font-size:21px;font-weight:700;letter-spacing:-0.3px;margin-bottom:0.4rem">
@@ -1076,14 +1115,12 @@ def explore_quest():
             </span>
           </div>
 
-          <!-- Beschreibung -->
           <div style="font-size:14px;color:#444;line-height:1.65;
                       background:#fafafa;border-radius:10px;padding:12px 14px;
                       margin-bottom:1.2rem">
             {quest['beschreibung']}
           </div>
 
-          <!-- Stats-Reihe -->
           <div style="display:flex;justify-content:space-around;text-align:center;
                       margin-bottom:1.2rem">
             <div>
@@ -1102,7 +1139,6 @@ def explore_quest():
             </div>
           </div>
 
-          <!-- Ort & XP-Details -->
           <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center">
             <span style="font-size:12px;background:#f5f5f5;border-radius:99px;
                          padding:4px 12px;color:#555">
@@ -1122,7 +1158,6 @@ def explore_quest():
         unsafe_allow_html=True,
     )
 
-    # ── Annehmen / Ablehnen Buttons ──────────────────────────────────────────
     col_reject, col_spacer, col_accept = st.columns([0.38, 0.24, 0.38])
 
     with col_reject:
@@ -1133,7 +1168,6 @@ def explore_quest():
     with col_accept:
         if st.button("✅ Annehmen", use_container_width=True, key="explore_accept", type="primary"):
             st.session_state.explore_accepted.append(quest["id"])
-            # Quest direkt als aktive Quest übernehmen
             new_quest = {
                 "name": quest["name"],
                 "start": date.today(),
@@ -1148,14 +1182,12 @@ def explore_quest():
             st.success(f"Quest **{quest['name']}** wurde angenommen und ist jetzt aktiv! 🎉")
             st.rerun()
 
-    # ── Swipe-Tipp ───────────────────────────────────────────────────────────
     st.markdown(
         "<div style='text-align:center;font-size:11px;color:#bbb;margin-top:0.5rem'>"
         "❌ Ablehnen &nbsp;·&nbsp; ✅ Annehmen</div>",
         unsafe_allow_html=True,
     )
 
-    # ── Bereits angenommen (kompakt) ─────────────────────────────────────────
     if st.session_state.explore_accepted:
         st.markdown("<br>", unsafe_allow_html=True)
         with st.expander(f"✅ Angenommene Quests ({len(st.session_state.explore_accepted)})"):
@@ -1185,6 +1217,9 @@ if st.sidebar.button("⚔️ Quest erstellen", use_container_width=True):
 
 if st.sidebar.button("🏆 Mein Level", use_container_width=True):
     st.session_state.page = "level"
+
+if st.sidebar.button("🥇 Rangliste", use_container_width=True):
+    st.session_state.page = "rangliste"
 
 if st.sidebar.button("👤 Account erstellen", use_container_width=True):
     st.session_state.page = "account"
@@ -1235,6 +1270,8 @@ elif st.session_state.page == "quest":
     page_quest_erstellen()
 elif st.session_state.page == "level":
     page_level()
+elif st.session_state.page == "rangliste":
+    page_rangliste()
 elif st.session_state.page == "account":
     page_account()
 elif st.session_state.page == "explore":
