@@ -850,6 +850,7 @@ def page_level():
             XP werden automatisch vergeben, wenn du im Feed einen Fortschritt postest.
             """
         )
+
 def page_archiv():
     st.markdown("## 📦 Quest-Archiv")
 
