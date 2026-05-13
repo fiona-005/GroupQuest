@@ -616,6 +616,8 @@ def page_freunde():
                     ]
                     st.rerun()
 
+def explore_quest():
+    st.markdown("## 👥 Explore Quests")
 
 # ── Sidebar Navigation ───────────────────────────────────────────────────────
 
@@ -708,3 +710,5 @@ elif st.session_state.page == "freunde":
     page_freunde()
 elif st.session_state.page == "account":
     page_account()
+elif st.session_state.page == "explore":
+    explore_quest()
